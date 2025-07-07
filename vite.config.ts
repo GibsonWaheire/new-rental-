@@ -1,22 +1,34 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react-swc";
-import path from "path";
-import { componentTagger } from "lovable-tagger";
+// vite.config.ts
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react-swc'
+import path from 'path'
 
-// https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+// ---------------------------------------------------
+// Vite configuration for NEW-RENTAL- (KenRent Manager)
+// ---------------------------------------------------
+// • React 18 + SWC for fast HMR
+// • Aliases "@/..." to "./src"
+// • Dev server on http://localhost:8080
+// • Optional `base` path for GitHub Pages (commented)
+// ---------------------------------------------------
+
+export default defineConfig({
+  // Uncomment the next line if you’ll host the **built** site
+  // under a sub-folder, e.g. GitHub Pages at /NEW-RENTAL-/
+  // base: '/NEW-RENTAL-/',
+
   server: {
-    host: "::",
-    port: 8080,
+    host: '::',      // listen on all IPv4 & IPv6 interfaces
+    port: 8080
   },
+
   plugins: [
-    react(),
-    mode === 'development' &&
-    componentTagger(),
-  ].filter(Boolean),
+    react()          // @vitejs/plugin-react-swc
+  ],
+
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-  },
-}));
+      '@': path.resolve(__dirname, './src')
+    }
+  }
+})
