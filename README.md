@@ -1,73 +1,121 @@
-# Welcome to your Lovable project
+# 🏠 KenRent Manager
 
-## Project info
+KenRent Manager is a full-stack rental property management system built for landlords and property managers in Kenya. It simplifies tenant management, rent tracking, utility billing, and maintenance requests.
 
-**URL**: https://lovable.dev/projects/43357ed1-b23f-4a98-bfba-23a2a2a6f233
+---
 
-## How can I edit this code?
+## 🚀 Project Setup (Local Development)
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/43357ed1-b23f-4a98-bfba-23a2a2a6f233) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Follow these steps to run the app locally:
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# 1. Clone this repository
 git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
 cd <YOUR_PROJECT_NAME>
 
-# Step 3: Install the necessary dependencies.
-npm i
+# 2. Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# 3. Start the development server
 npm run dev
-```
+Make sure you have Node.js (v18 or later) and npm installed.
 
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
+🧱 Tech Stack
 This project is built with:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Vite – blazing-fast dev server and bundler
 
-## How can I deploy this project?
+TypeScript
 
-Simply open [Lovable](https://lovable.dev/projects/43357ed1-b23f-4a98-bfba-23a2a2a6f233) and click on Share -> Publish.
+React
 
-## Can I connect a custom domain to my Lovable project?
+Tailwind CSS
 
-Yes, you can!
+shadcn/ui – modern accessible component library
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+📦 Folder Structure
+php
+Copy
+Edit
+├── src/                # Frontend code (React + Tailwind)
+├── api/                # Backend API (Express + Prisma)
+├── prisma/             # Database schema and migrations
+├── public/             # Static files and assets
+├── .env.example        # Environment variable template
+└── README.md
+📡 Deployment Options
+You can deploy this project to any of the following platforms:
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Vercel
+
+Netlify
+
+Render
+
+GitHub Pages (for frontend only)
+
+Set up a PostgreSQL database and define your .env variables before deploying.
+
+⚙️ Environment Setup
+Copy the example file and fill in your own config:
+
+sh
+Copy
+Edit
+cp .env.example .env
+Ensure your .env contains valid values like:
+
+env
+Copy
+Edit
+DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/<db>
+📌 Features
+Multi-property support
+
+Lease and tenant tracking
+
+M-Pesa & bank payments (coming soon)
+
+Utility billing
+
+Maintenance request system
+
+Role-based access (Owner, Caretaker, Tenant View)
+
+SMS/email alerts (optional)
+
+🧑‍💻 Contributing
+Want to improve this project? Fork it, make changes, and submit a pull request.
+
+📄 License
+MIT License © 2025 [Your Name or Company]
+
+✅ Status
+This project is under active development.
+
+yaml
+Copy
+Edit
+
+---
+
+### What you should change:
+- Replace `<YOUR_GIT_URL>` and `<YOUR_PROJECT_NAME>` with real values.
+- Add your name or brand to the License line.
+- You can also insert your logo, a screenshot, or a Loom walkthrough at the top if desired.
+
+---
+
+Let me know if you want help with:
+- Writing `.env.example`
+- Adding deploy instructions for Render or Vercel
+- Cleaning the frontend for launch
+
+Ready for the next part?
+
+
+
+
+
+
+
