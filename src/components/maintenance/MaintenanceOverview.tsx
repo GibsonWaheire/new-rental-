@@ -7,7 +7,7 @@ import { api, queryKeys } from "@/lib/api";
 import type { MaintenanceRequest, Tenant, Property } from "@/types/entities";
 import { Link } from "react-router-dom";
 
-export const MaintenanceOverview = () => {
+export const MaintenanceOverview = ({ compact = false }: { compact?: boolean }) => {
   const { data: requests = [], isLoading } = useQuery({ queryKey: queryKeys.resource("maintenanceRequests"), queryFn: () => api.list("maintenanceRequests", { _sort: "dateSubmitted", _order: "desc", _limit: 5 }) });
   const { data: tenants = [] } = useQuery({ queryKey: queryKeys.resource("tenants"), queryFn: () => api.list("tenants") });
   const { data: properties = [] } = useQuery({ queryKey: queryKeys.resource("properties"), queryFn: () => api.list("properties") });
@@ -46,7 +46,7 @@ export const MaintenanceOverview = () => {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className={`flex flex-row items-center justify-between ${compact ? "py-3" : ""}`}>
         <CardTitle className="text-lg font-semibold">Maintenance Requests</CardTitle>
         <Button asChild size="sm" variant="outline">
           <Link to="/maintenance">View All</Link>
@@ -59,7 +59,7 @@ export const MaintenanceOverview = () => {
         )}
         <div className="space-y-4">
           {(requests as MaintenanceRequest[]).filter((r) => !r.archived).map((request) => (
-            <div key={request.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+            <div key={request.id} className={`border rounded-lg ${compact ? "p-3" : "p-4"} hover:bg-gray-50 transition-colors`}>
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <h4 className="font-semibold text-gray-900">{request.title}</h4>

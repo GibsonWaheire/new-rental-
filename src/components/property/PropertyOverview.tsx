@@ -12,7 +12,7 @@ import type { Property } from "@/types/entities";
 import { toast } from "@/components/ui/use-toast";
 import { Link } from "react-router-dom";
 
-export const PropertyOverview = () => {
+export const PropertyOverview = ({ compact = false }: { compact?: boolean }) => {
   const qc = useQueryClient();
   const { data: properties = [], isLoading } = useQuery({ queryKey: queryKeys.resource("properties"), queryFn: () => api.list("properties") });
   const [open, setOpen] = useState(false);
@@ -23,7 +23,7 @@ export const PropertyOverview = () => {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className={`flex flex-row items-center justify-between ${compact ? "py-3" : ""}`}>
         <CardTitle className="text-lg font-semibold">Properties Overview</CardTitle>
         <div className="flex items-center gap-2">
           <Button asChild variant="outline" size="sm">
@@ -47,7 +47,7 @@ export const PropertyOverview = () => {
         )}
         <div className="space-y-4">
           {properties.filter((p) => !p.archived).map((property) => (
-            <div key={property.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+            <div key={property.id} className={`border rounded-lg ${compact ? "p-3" : "p-4"} hover:bg-gray-50 transition-colors`}>
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <h4 className="font-semibold text-gray-900">{property.name}</h4>

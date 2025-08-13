@@ -4,7 +4,7 @@ import { api, queryKeys } from "@/lib/api";
 import type { Property, Tenant, Lease, Payment, MaintenanceRequest } from "@/types/entities";
 import { useNavigate } from "react-router-dom";
 
-export const DashboardMetrics = () => {
+export const DashboardMetrics = ({ compact = false }: { compact?: boolean }) => {
   const navigate = useNavigate();
   const { data: tenants = [] } = useQuery({ queryKey: queryKeys.resource("tenants"), queryFn: () => api.list("tenants") });
   const { data: leases = [] } = useQuery({ queryKey: queryKeys.resource("leases"), queryFn: () => api.list("leases") });
@@ -40,13 +40,13 @@ export const DashboardMetrics = () => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
       {cards.map((c) => (
-        <Card key={c.title} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={c.onClick}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card key={c.title} className="hover:shadow-md transition-shadow cursor-pointer" onClick={c.onClick}>
+          <CardHeader className={`flex flex-row items-center justify-between space-y-0 ${compact ? "pb-1" : "pb-2"}`}>
             <CardTitle className="text-sm font-medium text-gray-600">{c.title}</CardTitle>
-            <span className="text-2xl">{c.icon}</span>
+            <span className={compact ? "text-xl" : "text-2xl"}>{c.icon}</span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 mb-1">{c.value}</div>
+            <div className={`${compact ? "text-xl" : "text-2xl"} font-bold text-gray-900 mb-1`}>{c.value}</div>
           </CardContent>
         </Card>
       ))}

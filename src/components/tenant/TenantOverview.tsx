@@ -7,13 +7,13 @@ import { api, queryKeys } from "@/lib/api";
 import type { Tenant } from "@/types/entities";
 import { Link } from "react-router-dom";
 
-export const TenantOverview = () => {
+export const TenantOverview = ({ compact = false }: { compact?: boolean }) => {
   const { data: tenants = [], isLoading } = useQuery({ queryKey: queryKeys.resource("tenants"), queryFn: () => api.list("tenants", { _limit: 5 }) });
   const getPaymentBadgeColor = (status: Tenant["paymentStatus"]) => status === "Paid" ? "bg-green-100 text-green-800" : status === "Overdue" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800";
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className={`flex flex-row items-center justify-between ${compact ? "py-3" : ""}`}>
         <CardTitle className="text-lg font-semibold">Recent Tenants</CardTitle>
         <Button asChild size="sm" variant="outline">
           <Link to="/tenants">View All</Link>
@@ -26,7 +26,7 @@ export const TenantOverview = () => {
         )}
         <div className="space-y-4">
           {(tenants as Tenant[]).filter((t) => !t.archived).map((tenant) => (
-            <div key={tenant.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+            <div key={tenant.id} className={`border rounded-lg ${compact ? "p-3" : "p-4"} hover:bg-gray-50 transition-colors`}>
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <h4 className="font-semibold text-gray-900">{tenant.name}</h4>

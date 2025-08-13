@@ -7,7 +7,7 @@ import { api, queryKeys } from "@/lib/api";
 import type { Payment, Tenant } from "@/types/entities";
 import { Link } from "react-router-dom";
 
-export const PaymentOverview = () => {
+export const PaymentOverview = ({ compact = false }: { compact?: boolean }) => {
   const { data: payments = [], isLoading } = useQuery({ queryKey: queryKeys.resource("payments"), queryFn: () => api.list("payments", { _sort: "date", _order: "desc", _limit: 5 }) });
   const { data: tenants = [] } = useQuery({ queryKey: queryKeys.resource("tenants"), queryFn: () => api.list("tenants") });
   const tenantById = new Map((tenants as Tenant[]).map((t) => [t.id, t] as const));
@@ -17,7 +17,7 @@ export const PaymentOverview = () => {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className={`flex flex-row items-center justify-between ${compact ? "py-3" : ""}`}>
         <CardTitle className="text-lg font-semibold">Recent Payments</CardTitle>
         <Button asChild size="sm" variant="outline">
           <Link to="/payments">View All</Link>
@@ -30,7 +30,7 @@ export const PaymentOverview = () => {
         )}
         <div className="space-y-4">
           {(payments as Payment[]).filter((p) => !(p as any).archived).map((payment) => (
-            <div key={payment.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+            <div key={payment.id} className={`border rounded-lg ${compact ? "p-3" : "p-4"} hover:bg-gray-50 transition-colors`}>
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <h4 className="font-semibold text-gray-900">{tenantById.get(payment.tenantId)?.name ?? payment.tenantId}</h4>
