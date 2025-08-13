@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/use-toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { generateLeasePDF } from "@/utils/pdf";
 
 type SortKey = "start" | "end" | "rent";
 
@@ -158,22 +159,8 @@ export default function LeasesPage() {
   });
 
   const exportPDF = async (l: Lease) => {
-    const { jsPDF } = await import("jspdf");
-    const doc = new jsPDF({ unit: "pt", format: "a4" });
-    doc.setFontSize(16);
-    doc.text("Lease Agreement", 40, 40);
-    doc.setFontSize(11);
-    const lines = [
-      `Lease ID: ${l.id}`,
-      `Property: ${propertyById.get(l.propertyId)?.name ?? l.propertyId}`,
-      `Tenant: ${tenantById.get(l.tenantId)?.name ?? l.tenantId}`,
-      `Unit: ${l.unit}`,
-      `Period: ${new Date(l.startDate).toLocaleDateString()} - ${new Date(l.endDate).toLocaleDateString()}`,
-      `Rent: KES ${l.rentAmount.toLocaleString()}`,
-      `Status: ${computedStatus(l)}`,
-    ];
-    lines.forEach((t, i) => doc.text(t, 40, 80 + i * 18));
-    doc.save(`lease-${l.id}.pdf`);
+    const blob = await generateLeasePDF(l, tenantById.get(l.tenantId), propertyById.get(l.propertyId));
+    const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `lease-${l.id}.pdf`; a.click(); URL.revokeObjectURL(url);
   };
 
   const sendExpiryReminder = useMutation({

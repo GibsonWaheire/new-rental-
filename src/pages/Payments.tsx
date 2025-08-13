@@ -138,22 +138,29 @@ export default function PaymentsPage() {
   const exportPDF = async () => {
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF({ unit: "pt", format: "a4" });
-    doc.setFontSize(14); doc.text("Payments", 40, 40); doc.setFontSize(10);
+    const margin = 40;
+    doc.setFontSize(18); doc.text("Payments", margin, margin);
+    doc.setDrawColor(220); doc.line(margin, margin + 8, doc.internal.pageSize.getWidth() - margin, margin + 8);
+    doc.setFontSize(10);
     const headers = ["Tenant","Property","Lease","Amount","Method","Date","Status","Ref"];
-    headers.forEach((h, i) => doc.text(h, 40 + i * 68, 70));
-    filtered.slice(0, 35).forEach((p, idx) => {
-      const y = 70 + (idx + 1) * 18;
+    const colWidths = [110, 110, 50, 80, 80, 120, 70, 80];
+    let x = margin; let y = margin + 28;
+    headers.forEach((h, i) => { doc.text(h, x, y); x += colWidths[i]; });
+    y += 16;
+    filtered.slice(0, 40).forEach((p) => {
+      x = margin;
       const cols = [
         tById.get(p.tenantId)?.name ?? String(p.tenantId),
         pById.get(lById.get(p.leaseId)?.propertyId ?? -1)?.name ?? "-",
-        String(p.leaseId),
+        `#${p.leaseId}`,
         `KES ${p.amount.toLocaleString()}`,
         p.method,
         new Date(p.date).toLocaleString(),
         p.status,
         p.reference,
       ];
-      cols.forEach((c, i) => doc.text(String(c), 40 + i * 68, y));
+      cols.forEach((c, i) => { doc.text(String(c), x, y); x += colWidths[i]; });
+      y += 16;
     });
     doc.save(`payments-${Date.now()}.pdf`);
   };

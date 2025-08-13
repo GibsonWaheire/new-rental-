@@ -20,6 +20,7 @@ import { toast } from "@/components/ui/use-toast";
 import { MoreHorizontal } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { generateTenantsPDF } from "@/utils/pdf";
 
 const tenantSchema = z.object({
   name: z.string().min(2),
@@ -114,29 +115,9 @@ export default function TenantsPage() {
   };
 
   const exportPDF = async () => {
-    const { jsPDF } = await import("jspdf");
-    const doc = new jsPDF({ unit: "pt", format: "a4" });
-    doc.setFontSize(14);
-    doc.text("Tenants", 40, 40);
-    doc.setFontSize(10);
-    const startY = 70;
-    const rowH = 18;
-    const headers = ["Name", "Unit", "Phone", "Rent", "Status", "Payment", "Property"];
-    headers.forEach((h, i) => doc.text(h, 40 + i * 80, startY));
-    filtered.slice(0, 35).forEach((t, idx) => {
-      const y = startY + (idx + 1) * rowH;
-      const cols = [
-        t.name,
-        t.unit,
-        t.phone,
-        `KES ${t.rentAmount.toLocaleString()}`,
-        t.status,
-        t.paymentStatus,
-        properties.find((p) => p.id === t.propertyId)?.name ?? String(t.propertyId),
-      ];
-      cols.forEach((c, i) => doc.text(String(c), 40 + i * 80, y));
-    });
-    doc.save(`tenants-${Date.now()}.pdf`);
+    const map = new Map<number, string>(properties.map((p) => [p.id, p.name] as [number, string]));
+    const blob = await generateTenantsPDF(filtered, map);
+    const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `tenants-${Date.now()}.pdf`; a.click(); URL.revokeObjectURL(url);
   };
 
   const createMutation = useMutation({
