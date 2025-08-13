@@ -20,6 +20,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import { generatePaymentReceiptPDF } from "@/utils/pdf";
 import { MoreHorizontal } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
 
 const paymentSchema = z.object({
   tenantId: z.coerce.number().int().positive(),
@@ -61,6 +62,7 @@ export default function PaymentsPage() {
   const [selected, setSelected] = useState<Set<ID>>(new Set());
   const [confirmPaymentId, setConfirmPaymentId] = useState<ID | null>(null);
   const [confirmArchive, setConfirmArchive] = useState<{ id: ID; archived: boolean } | null>(null);
+  const [dense, setDense] = useState(false);
 
   const tById = useMemo(() => new Map(tenants.map((t) => [t.id, t])), [tenants]);
   const lById = useMemo(() => new Map(leases.map((l) => [l.id, l])), [leases]);
@@ -166,11 +168,18 @@ export default function PaymentsPage() {
   };
 
   const badge = (status: Payment["status"]) => status === "Completed" ? "bg-green-100 text-green-800" : status === "Pending" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800";
+  const methodBadge = (method: Payment["method"]) =>
+    method === "M-Pesa" ? "bg-green-100 text-green-800" : method === "Bank Transfer" ? "bg-blue-100 text-blue-800" : method === "Card" ? "bg-purple-100 text-purple-800" : "bg-gray-100 text-gray-800";
+  const formatAmount = (n: number) => `KES ${n.toLocaleString()}`;
+  const formatDateTime = (iso: string) => new Date(iso).toLocaleString();
 
   return (
     <Card>
       <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <CardTitle>Payments</CardTitle>
+        <div>
+          <CardTitle>Payments</CardTitle>
+          <p className="text-sm text-muted-foreground">{filtered.length} result{filtered.length === 1 ? "" : "s"}</p>
+        </div>
         <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
           <Input placeholder="Search payments..." value={search} onChange={(e) => setSearch(e.target.value)} />
           <Select value={filterTenant ? String(filterTenant) : undefined} onValueChange={(v) => setFilterTenant(Number(v))}>
@@ -209,6 +218,10 @@ export default function PaymentsPage() {
             </SelectContent>
           </Select>
           <Button variant="outline" onClick={() => setShowArchived((s) => !s)}>{showArchived ? "Hide Archived" : "Show Archived"}</Button>
+          <div className="flex items-center gap-2 px-2">
+            <Label htmlFor="density" className="text-xs text-muted-foreground">Compact</Label>
+            <Switch id="density" checked={dense} onCheckedChange={(v) => setDense(!!v)} aria-label="Toggle compact density" />
+          </div>
           <Button variant="outline" onClick={exportCSV}>Export CSV</Button>
           <Button variant="outline" onClick={exportPDF}>Export PDF</Button>
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
@@ -247,16 +260,18 @@ export default function PaymentsPage() {
               </TableHeader>
               <TableBody>
                 {filtered.map((p) => (
-                  <TableRow key={p.id} className="odd:bg-gray-50 hover:bg-gray-100/60">
+                  <TableRow key={p.id} className={`odd:bg-gray-50 hover:bg-gray-100/60 ${dense ? "h-10" : ""}`}>
                     <TableCell className="align-middle"><input type="checkbox" checked={selected.has(p.id)} onChange={(e) => {
                       const copy = new Set(selected); if (e.target.checked) copy.add(p.id); else copy.delete(p.id); setSelected(copy);
                     }} /></TableCell>
                     <TableCell className="font-medium">{tById.get(p.tenantId)?.name ?? p.tenantId}</TableCell>
                     <TableCell>{pById.get(lById.get(p.leaseId)?.propertyId ?? -1)?.name ?? "-"}</TableCell>
                     <TableCell>#{p.leaseId}</TableCell>
-                    <TableCell className="text-green-700 text-right tabular-nums whitespace-nowrap">KES {p.amount.toLocaleString()}</TableCell>
-                    <TableCell>{p.method}</TableCell>
-                    <TableCell className="whitespace-nowrap">{new Date(p.date).toLocaleString()}</TableCell>
+                    <TableCell className="text-green-700 text-right tabular-nums whitespace-nowrap">{formatAmount(p.amount)}</TableCell>
+                    <TableCell>
+                      <Badge className={`${methodBadge(p.method)} uppercase tracking-wide px-2 py-0.5`}>{p.method}</Badge>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">{formatDateTime(p.date)}</TableCell>
                     <TableCell><Badge className={`${badge(p.status)} uppercase tracking-wide px-2 py-0.5`}>{p.status}</Badge></TableCell>
                     <TableCell className="max-w-[180px] truncate">{p.reference}</TableCell>
                     <TableCell className="text-right">
