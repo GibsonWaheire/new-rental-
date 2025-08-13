@@ -1,68 +1,31 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, Plus } from "lucide-react";
+import { User } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { api, queryKeys } from "@/lib/api";
+import type { Tenant } from "@/types/entities";
+import { Link } from "react-router-dom";
 
 export const TenantOverview = () => {
-  const tenants = [
-    {
-      id: 1,
-      name: "Mary Wanjiku",
-      unit: "Royal Court - Unit 3A",
-      phone: "+254 712 345 678",
-      leaseEnd: "2024-12-31",
-      rentAmount: "KES 45,000",
-      status: "Active",
-      paymentStatus: "Paid"
-    },
-    {
-      id: 2,
-      name: "James Kiprotich",
-      unit: "Green Valley - Unit 12B",
-      phone: "+254 722 987 654",
-      leaseEnd: "2025-03-15",
-      rentAmount: "KES 55,000",
-      status: "Active",
-      paymentStatus: "Overdue"
-    },
-    {
-      id: 3,
-      name: "Grace Achieng",
-      unit: "Sunrise - Unit 2C",
-      phone: "+254 733 456 789",
-      leaseEnd: "2024-11-30",
-      rentAmount: "KES 38,000",
-      status: "Active",
-      paymentStatus: "Paid"
-    }
-  ];
-
-  const getPaymentBadgeColor = (status: string) => {
-    switch (status) {
-      case 'Paid':
-        return 'bg-green-100 text-green-800';
-      case 'Overdue':
-        return 'bg-red-100 text-red-800';
-      case 'Pending':
-        return 'bg-yellow-100 text-yellow-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
+  const { data: tenants = [], isLoading } = useQuery({ queryKey: queryKeys.resource("tenants"), queryFn: () => api.list("tenants", { _limit: 5 }) });
+  const getPaymentBadgeColor = (status: Tenant["paymentStatus"]) => status === "Paid" ? "bg-green-100 text-green-800" : status === "Overdue" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800";
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg font-semibold">Recent Tenants</CardTitle>
-        <Button size="sm" variant="outline">
-          <User className="h-4 w-4 mr-2" />
-          View All
+        <Button asChild size="sm" variant="outline">
+          <Link to="/tenants">View All</Link>
         </Button>
       </CardHeader>
       <CardContent>
+        {isLoading && <div className="text-sm text-muted-foreground">Loading tenants...</div>}
+        {!isLoading && (tenants as Tenant[]).length === 0 && (
+          <div className="text-sm text-muted-foreground">No tenants yet.</div>
+        )}
         <div className="space-y-4">
-          {tenants.map((tenant) => (
+          {(tenants as Tenant[]).filter((t) => !t.archived).map((tenant) => (
             <div key={tenant.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
               <div className="flex items-start justify-between mb-3">
                 <div>
@@ -71,23 +34,18 @@ export const TenantOverview = () => {
                   <p className="text-sm text-gray-500">{tenant.phone}</p>
                 </div>
                 <div className="flex flex-col items-end space-y-1">
-                  <Badge variant="default" className="bg-blue-100 text-blue-800">
-                    {tenant.status}
-                  </Badge>
-                  <Badge className={getPaymentBadgeColor(tenant.paymentStatus)}>
-                    {tenant.paymentStatus}
-                  </Badge>
+                  <Badge variant="default" className="bg-blue-100 text-blue-800">{tenant.status}</Badge>
+                  <Badge className={getPaymentBadgeColor(tenant.paymentStatus)}>{tenant.paymentStatus}</Badge>
                 </div>
               </div>
-              
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-gray-600">Monthly Rent</p>
-                  <p className="font-semibold text-green-600">{tenant.rentAmount}</p>
+                  <p className="font-semibold text-green-600">KES {tenant.rentAmount.toLocaleString()}</p>
                 </div>
                 <div>
                   <p className="text-gray-600">Lease Ends</p>
-                  <p className="font-semibold">{new Date(tenant.leaseEnd).toLocaleDateString()}</p>
+                  <p className="font-semibold">{new Date().toLocaleDateString()}</p>
                 </div>
               </div>
             </div>

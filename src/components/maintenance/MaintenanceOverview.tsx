@@ -1,44 +1,20 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Bell } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { api, queryKeys } from "@/lib/api";
+import type { MaintenanceRequest, Tenant, Property } from "@/types/entities";
+import { Link } from "react-router-dom";
 
 export const MaintenanceOverview = () => {
-  const requests = [
-    {
-      id: 1,
-      title: "Leaking Kitchen Faucet",
-      tenant: "Mary Wanjiku",
-      unit: "Royal Court - Unit 3A",
-      priority: "Medium",
-      status: "In Progress",
-      dateSubmitted: "2024-01-08",
-      estimatedCost: "KES 3,500"
-    },
-    {
-      id: 2,
-      title: "Broken Window Lock",
-      tenant: "James Kiprotich", 
-      unit: "Green Valley - Unit 12B",
-      priority: "Low",
-      status: "Pending",
-      dateSubmitted: "2024-01-07",
-      estimatedCost: "KES 1,200"
-    },
-    {
-      id: 3,
-      title: "Power Outlet Not Working",
-      tenant: "Grace Achieng",
-      unit: "Sunrise - Unit 2C", 
-      priority: "High",
-      status: "Open",
-      dateSubmitted: "2024-01-09",
-      estimatedCost: "KES 2,800"
-    }
-  ];
+  const { data: requests = [], isLoading } = useQuery({ queryKey: queryKeys.resource("maintenanceRequests"), queryFn: () => api.list("maintenanceRequests", { _sort: "dateSubmitted", _order: "desc", _limit: 5 }) });
+  const { data: tenants = [] } = useQuery({ queryKey: queryKeys.resource("tenants"), queryFn: () => api.list("tenants") });
+  const { data: properties = [] } = useQuery({ queryKey: queryKeys.resource("properties"), queryFn: () => api.list("properties") });
+  const tById = new Map((tenants as Tenant[]).map((t) => [t.id, t] as const));
+  const pById = new Map((properties as Property[]).map((p) => [p.id, p] as const));
 
-  const getPriorityBadgeColor = (priority: string) => {
+  const getPriorityBadgeColor = (priority: MaintenanceRequest["priority"]) => {
     switch (priority) {
       case 'Critical':
         return 'bg-red-100 text-red-800';
@@ -53,7 +29,7 @@ export const MaintenanceOverview = () => {
     }
   };
 
-  const getStatusBadgeColor = (status: string) => {
+  const getStatusBadgeColor = (status: MaintenanceRequest["status"]) => {
     switch (status) {
       case 'Completed':
         return 'bg-green-100 text-green-800';
@@ -72,30 +48,28 @@ export const MaintenanceOverview = () => {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg font-semibold">Maintenance Requests</CardTitle>
-        <Button size="sm" variant="outline">
-          <Bell className="h-4 w-4 mr-2" />
-          View All
+        <Button asChild size="sm" variant="outline">
+          <Link to="/maintenance">View All</Link>
         </Button>
       </CardHeader>
       <CardContent>
+        {isLoading && <div className="text-sm text-muted-foreground">Loading requests...</div>}
+        {!isLoading && (requests as MaintenanceRequest[]).length === 0 && (
+          <div className="text-sm text-muted-foreground">No recent requests.</div>
+        )}
         <div className="space-y-4">
-          {requests.map((request) => (
+          {(requests as MaintenanceRequest[]).filter((r) => !r.archived).map((request) => (
             <div key={request.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <h4 className="font-semibold text-gray-900">{request.title}</h4>
-                  <p className="text-sm text-gray-600">{request.tenant} • {request.unit}</p>
+                  <p className="text-sm text-gray-600">{tById.get(request.tenantId ?? -1)?.name ?? "-"} • {pById.get(request.propertyId)?.name ?? request.propertyId}</p>
                 </div>
                 <div className="flex flex-col items-end space-y-1">
-                  <Badge className={getPriorityBadgeColor(request.priority)}>
-                    {request.priority}
-                  </Badge>
-                  <Badge className={getStatusBadgeColor(request.status)}>
-                    {request.status}
-                  </Badge>
+                  <Badge className={getPriorityBadgeColor(request.priority)}>{request.priority}</Badge>
+                  <Badge className={getStatusBadgeColor(request.status)}>{request.status}</Badge>
                 </div>
               </div>
-              
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-gray-600">Submitted</p>
@@ -103,7 +77,7 @@ export const MaintenanceOverview = () => {
                 </div>
                 <div>
                   <p className="text-gray-600">Est. Cost</p>
-                  <p className="font-semibold text-orange-600">{request.estimatedCost}</p>
+                  <p className="font-semibold text-orange-600">{request.estimatedCost != null ? `KES ${request.estimatedCost.toLocaleString()}` : "-"}</p>
                 </div>
               </div>
             </div>

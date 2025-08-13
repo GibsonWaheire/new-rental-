@@ -89,6 +89,28 @@
       "status": "Active",
       "archived": false,
       "id": 4
+    },
+    {
+      "propertyId": 1,
+      "tenantId": 6,
+      "unit": "2",
+      "startDate": "2025-08-13T00:00:00.000Z",
+      "endDate": "2026-08-13T00:00:00.000Z",
+      "rentAmount": 9000,
+      "status": "Active",
+      "archived": false,
+      "id": 5
+    },
+    {
+      "propertyId": 1,
+      "tenantId": 6,
+      "unit": "2",
+      "startDate": "2025-08-13T00:00:00.000Z",
+      "endDate": "2026-08-13T00:00:00.000Z",
+      "rentAmount": 9000,
+      "status": "Active",
+      "archived": true,
+      "id": 6
     }
   ],
   "payments": [
