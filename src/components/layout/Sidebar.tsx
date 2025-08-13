@@ -12,6 +12,7 @@ import {
   MapPin,
   FileText,
   Bell,
+  Plus,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -27,6 +28,8 @@ const menuItems = [
   { icon: FileText, label: "Payments", path: "/payments" },
   { icon: Bell, label: "Maintenance", path: "/maintenance", count: 3 },
   { icon: Settings, label: "Settings", path: "/settings" },
+  { icon: Bell, label: "Notifications", path: "/notifications" },
+  { icon: Plus, label: "Quick Add", path: "/quick-add" },
 ];
 
 export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => (

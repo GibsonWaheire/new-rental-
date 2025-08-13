@@ -1,0 +1,208 @@
+{
+  "properties": [
+    {
+      "id": 1,
+      "name": "Royal Court Apartments",
+      "location": "Ruiru, Kiambu County",
+      "totalUnits": 12,
+      "occupiedUnits": 10,
+      "monthlyRevenue": 1200000,
+      "status": "Active",
+      "archived": false
+    },
+    {
+      "id": 2,
+      "name": "Green Valley Estate",
+      "location": "Thika, Kiambu County",
+      "totalUnits": 24,
+      "occupiedUnits": 22,
+      "monthlyRevenue": 2400000,
+      "status": "Active",
+      "archived": false
+    },
+    {
+      "id": 3,
+      "name": "Sunrise Apartments",
+      "location": "Kasarani, Nairobi",
+      "totalUnits": 8,
+      "occupiedUnits": 6,
+      "monthlyRevenue": 480000,
+      "status": "Active",
+      "archived": false
+    }
+  ],
+  "tenants": [
+    {
+      "id": 1,
+      "name": "Mary Wanjiku",
+      "unit": "Royal Court - Unit 3A",
+      "phone": "+254712345678",
+      "rentAmount": 45000,
+      "status": "Active",
+      "paymentStatus": "Paid",
+      "propertyId": 1,
+      "archived": false
+    },
+    {
+      "id": 2,
+      "name": "James Kiprotich",
+      "unit": "Green Valley - Unit 12B",
+      "phone": "+254722987654",
+      "rentAmount": 55000,
+      "status": "Active",
+      "paymentStatus": "Overdue",
+      "propertyId": 2,
+      "archived": false
+    },
+    {
+      "id": 3,
+      "name": "Grace Achieng",
+      "unit": "Sunrise - Unit 2C",
+      "phone": "+254733456789",
+      "rentAmount": 38000,
+      "status": "Active",
+      "paymentStatus": "Paid",
+      "propertyId": 3,
+      "archived": false
+    },
+    {
+      "name": "Mcgibs",
+      "phone": "+254757556439",
+      "unit": "",
+      "rentAmount": 0,
+      "status": "Active",
+      "paymentStatus": "Pending",
+      "propertyId": 1,
+      "archived": false,
+      "id": 4
+    },
+    {
+      "name": "Mcgibs",
+      "phone": "+254757556439",
+      "unit": "",
+      "rentAmount": 0,
+      "status": "Active",
+      "paymentStatus": "Pending",
+      "propertyId": 1,
+      "archived": true,
+      "id": 5
+    }
+  ],
+  "leases": [
+    {
+      "id": 1,
+      "propertyId": 1,
+      "tenantId": 1,
+      "unit": "Unit 3A",
+      "startDate": "2024-01-01",
+      "endDate": "2024-12-31",
+      "rentAmount": 45000,
+      "status": "Active",
+      "archived": false
+    },
+    {
+      "id": 3,
+      "propertyId": 3,
+      "tenantId": 3,
+      "unit": "Unit 2C",
+      "startDate": "2024-02-01",
+      "endDate": "2024-11-30",
+      "rentAmount": 38000,
+      "status": "Active",
+      "archived": false
+    },
+    {
+      "propertyId": 1,
+      "tenantId": 1,
+      "unit": "12b",
+      "startDate": "2025-08-13T00:00:00.000Z",
+      "endDate": "2026-08-13T00:00:00.000Z",
+      "rentAmount": 30000,
+      "status": "Active",
+      "archived": false,
+      "id": 4
+    }
+  ],
+  "payments": [
+    {
+      "id": 1,
+      "tenantId": 1,
+      "leaseId": 1,
+      "amount": 45000,
+      "method": "M-Pesa",
+      "date": "2024-01-05",
+      "status": "Completed",
+      "reference": "MPX123456789"
+    },
+    {
+      "id": 2,
+      "tenantId": 3,
+      "leaseId": 3,
+      "amount": 38000,
+      "method": "Bank Transfer",
+      "date": "2024-01-03",
+      "status": "Completed",
+      "reference": "BT987654321"
+    }
+  ],
+  "maintenanceRequests": [
+    {
+      "id": 1,
+      "propertyId": 1,
+      "tenantId": 1,
+      "title": "Leaking Kitchen Faucet",
+      "priority": "Medium",
+      "status": "In Progress",
+      "dateSubmitted": "2024-01-08",
+      "estimatedCost": 3500,
+      "archived": false
+    },
+    {
+      "id": 2,
+      "propertyId": 2,
+      "tenantId": 2,
+      "title": "Broken Window Lock",
+      "priority": "Low",
+      "status": "Pending",
+      "dateSubmitted": "2024-01-07",
+      "estimatedCost": 1200,
+      "archived": false
+    },
+    {
+      "id": 3,
+      "propertyId": 3,
+      "tenantId": 3,
+      "title": "Power Outlet Not Working",
+      "priority": "High",
+      "status": "Open",
+      "dateSubmitted": "2024-01-09",
+      "estimatedCost": 2800,
+      "archived": false
+    }
+  ],
+  "settings": {
+    "id": 1,
+    "currency": "KES",
+    "locale": "en-KE",
+    "theme": "light"
+  },
+  "notifications": [
+    {
+      "id": 1,
+      "title": "Rent collected",
+      "message": "Payment received from Mary Wanjiku (KES 45,000)",
+      "createdAt": "2024-01-05T08:00:00.000Z",
+      "read": false,
+      "type": "success"
+    },
+    {
+      "id": 2,
+      "title": "Maintenance request",
+      "message": "New request: Broken Window Lock (Green Valley)",
+      "createdAt": "2024-01-07T10:30:00.000Z",
+      "read": false,
+      "type": "info"
+    }
+  ],
+  "leaseDocuments": []
+}
