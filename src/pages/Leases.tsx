@@ -193,6 +193,7 @@ export default function LeasesPage() {
   });
 
   const [confirmLeaseId, setConfirmLeaseId] = useState<ID | null>(null);
+  const [confirmArchive, setConfirmArchive] = useState<{ id: ID; archived: boolean } | null>(null);
 
   return (
     <Card>
@@ -251,14 +252,14 @@ export default function LeasesPage() {
         {isError && <div className="text-red-600">Failed to load leases.</div>}
         {!isLoading && !isError && (
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
+            <Table className="w-full text-sm">
+              <TableHeader className="sticky top-0 z-10 bg-white shadow-sm">
                 <TableRow>
                   <TableHead>Property</TableHead>
                   <TableHead>Tenant</TableHead>
                   <TableHead>Unit</TableHead>
                   <TableHead>Period</TableHead>
-                  <TableHead>Rent</TableHead>
+                  <TableHead className="text-right">Rent</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -272,7 +273,7 @@ export default function LeasesPage() {
                     tenantName={tenantById.get(l.tenantId)?.name ?? String(l.tenantId)}
                     status={computedStatus(l)}
                     onEdit={() => { setEditing(l); setOpen(true); }}
-                    onArchive={() => archiveLease.mutate({ id: l.id, archived: !(l as unknown as { archived?: boolean }).archived })}
+                    onArchive={() => setConfirmArchive({ id: l.id, archived: !(l as unknown as { archived?: boolean }).archived })}
                     onDelete={() => setConfirmLeaseId(l.id)}
                     onDownload={() => exportPDF(l)}
                     onRenew={() => setRenewing(l)}
@@ -285,7 +286,7 @@ export default function LeasesPage() {
         )}
       </CardContent>
 
-      <Dialog open={!!renewing} onOpenChange={(v) => { if (!v) setRenewing(null); }}>
+          <Dialog open={!!renewing} onOpenChange={(v) => { if (!v) setRenewing(null); }}>
         <DialogContent>
           {renewing && (
             <LeaseRenewDialog
@@ -311,6 +312,17 @@ export default function LeasesPage() {
           setConfirmLeaseId(null);
         }}
       />
+      <ConfirmDialog
+        open={confirmArchive !== null}
+        title={confirmArchive?.archived ? "Unarchive lease?" : "Archive lease?"}
+        message={confirmArchive?.archived ? "This will unarchive the lease." : "This will archive the lease."}
+        onCancel={() => setConfirmArchive(null)}
+        onConfirm={async () => {
+          if (!confirmArchive) return;
+          await archiveLease.mutateAsync({ id: confirmArchive.id, archived: confirmArchive.archived });
+          setConfirmArchive(null);
+        }}
+      />
     </Card>
   );
 }
@@ -329,14 +341,14 @@ function LeaseRow({ lease, propertyName, tenantName, status, onEdit, onArchive, 
 }) {
   const [docsOpen, setDocsOpen] = useState(false);
   return (
-    <TableRow>
+    <TableRow className="odd:bg-gray-50 hover:bg-gray-100/60">
       <TableCell>{propertyName}</TableCell>
       <TableCell>{tenantName}</TableCell>
       <TableCell>{lease.unit}</TableCell>
       <TableCell>{new Date(lease.startDate).toLocaleDateString()} - {new Date(lease.endDate).toLocaleDateString()}</TableCell>
-      <TableCell className="text-green-700">KES {lease.rentAmount.toLocaleString()}</TableCell>
+      <TableCell className="text-green-700 text-right tabular-nums whitespace-nowrap">KES {lease.rentAmount.toLocaleString()}</TableCell>
       <TableCell>
-        <Badge className={status === "Expired" ? "bg-red-100 text-red-800" : status === "Pending Renewal" ? "bg-yellow-100 text-yellow-800" : status === "Pending" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"}>
+        <Badge className={`${status === "Expired" ? "bg-red-100 text-red-800" : status === "Pending Renewal" ? "bg-yellow-100 text-yellow-800" : status === "Pending" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"} uppercase tracking-wide px-2 py-0.5`}>
           {status}
         </Badge>
       </TableCell>

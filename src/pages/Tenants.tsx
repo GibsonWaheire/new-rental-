@@ -17,6 +17,9 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/use-toast";
+import { MoreHorizontal } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 const tenantSchema = z.object({
   name: z.string().min(2),
@@ -100,7 +103,7 @@ export default function TenantsPage() {
         properties.find((p) => p.id === t.propertyId)?.name ?? String(t.propertyId),
       ]),
     ];
-    const csv = rows.map((r) => r.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(",")).join("\n");
+    const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -184,6 +187,9 @@ export default function TenantsPage() {
     onError: (err: unknown) => toast({ title: "Archive failed", description: String(err) }),
   });
 
+  const [confirmDeleteId, setConfirmDeleteId] = useState<ID | null>(null);
+  const [confirmArchive, setConfirmArchive] = useState<{ id: ID; archived: boolean } | null>(null);
+
   return (
     <Card>
       <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -240,13 +246,13 @@ export default function TenantsPage() {
 
         {!isLoading && !isError && (
           <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
+            <Table className="w-full text-sm">
+              <TableHeader className="sticky top-0 z-10 bg-white shadow-sm">
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Unit</TableHead>
                   <TableHead>Phone</TableHead>
-                  <TableHead>Rent</TableHead>
+                  <TableHead className="text-right">Rent</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Payment</TableHead>
                   <TableHead>Property</TableHead>
@@ -256,7 +262,7 @@ export default function TenantsPage() {
               </TableHeader>
               <TableBody>
                 {filtered.map((t) => (
-                  <TableRow key={t.id}>
+                  <TableRow key={t.id} className="odd:bg-gray-50 hover:bg-gray-100/60">
                     <TableCell className="font-medium">{t.name}</TableCell>
                     <TableCell>{t.unit}</TableCell>
                     <TableCell>
@@ -265,43 +271,69 @@ export default function TenantsPage() {
                         Edit
                       </Button>
                     </TableCell>
-                    <TableCell className="text-green-700">KES {t.rentAmount.toLocaleString()}</TableCell>
+                    <TableCell className="text-green-700 text-right tabular-nums whitespace-nowrap">KES {t.rentAmount.toLocaleString()}</TableCell>
                     <TableCell>
-                      <Badge className={t.status === "Active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>{t.status}</Badge>
+                      <Badge className={`${t.status === "Active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"} uppercase tracking-wide px-2 py-0.5`}>{t.status}</Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge className={t.paymentStatus === "Paid" ? "bg-green-100 text-green-800" : t.paymentStatus === "Overdue" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}>{t.paymentStatus}</Badge>
+                      <Badge className={`${t.paymentStatus === "Paid" ? "bg-green-100 text-green-800" : t.paymentStatus === "Overdue" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"} uppercase tracking-wide px-2 py-0.5`}>{t.paymentStatus}</Badge>
                     </TableCell>
                     <TableCell>{properties.find((p) => p.id === t.propertyId)?.name ?? t.propertyId}</TableCell>
                     <TableCell>{t.archived ? <Badge className="bg-gray-200 text-gray-800">Yes</Badge> : <Badge variant="secondary">No</Badge>}</TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Dialog onOpenChange={(v) => { if (!v) setEditing(null); }}>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={() => { setEditing(t); setOpen(true); }}>
-                            Edit
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="icon" aria-label="Actions">
+                            <MoreHorizontal className="h-4 w-4" />
                           </Button>
-                        </DialogTrigger>
-                      </Dialog>
-                      <Button variant="outline" size="sm" onClick={() => archiveMutation.mutate({ id: t.id, archived: !t.archived })}>
-                        {t.archived ? "Unarchive" : "Archive"}
-                      </Button>
-                      <Button variant="outline" size="sm" asChild>
-                        <Link to="/leases">View Lease</Link>
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => toast({ title: "Reminder sent", description: `Reminder sent to ${t.name}` })}>
-                        Send Reminder
-                      </Button>
-                      <Button variant="destructive" size="sm" onClick={() => deleteMutation.mutate(t.id)}>
-                        Delete
-                      </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem onClick={() => { setEditing(t); setOpen(true); }}>Edit</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setConfirmArchive({ id: t.id, archived: !t.archived })}>{t.archived ? "Unarchive" : "Archive"}</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem asChild>
+                            <Link to="/leases">View lease</Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => toast({ title: "Reminder sent", description: `Reminder sent to ${t.name}` })}>Send reminder</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-red-600" onClick={() => setConfirmDeleteId(t.id)}>Delete</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
+                {filtered.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-8">No tenants found. Adjust filters or search.</TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
         )}
       </CardContent>
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        title="Delete tenant?"
+        message="This will permanently remove the tenant and related leases and payments."
+        onCancel={() => setConfirmDeleteId(null)}
+        onConfirm={async () => {
+          if (confirmDeleteId == null) return;
+          await deleteMutation.mutateAsync(confirmDeleteId);
+          setConfirmDeleteId(null);
+        }}
+      />
+      <ConfirmDialog
+        open={confirmArchive !== null}
+        title={confirmArchive?.archived ? "Unarchive tenant?" : "Archive tenant?"}
+        message={confirmArchive?.archived ? "This will unarchive the tenant." : "This will archive the tenant."}
+        onCancel={() => setConfirmArchive(null)}
+        onConfirm={async () => {
+          if (!confirmArchive) return;
+          await archiveMutation.mutateAsync({ id: confirmArchive.id, archived: confirmArchive.archived });
+          setConfirmArchive(null);
+        }}
+      />
     </Card>
   );
 }
