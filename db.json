@@ -11,16 +11,6 @@
       "archived": false
     },
     {
-      "id": 2,
-      "name": "Green Valley Estate",
-      "location": "Thika, Kiambu County",
-      "totalUnits": 24,
-      "occupiedUnits": 22,
-      "monthlyRevenue": 2400000,
-      "status": "Active",
-      "archived": false
-    },
-    {
       "id": 3,
       "name": "Sunrise Apartments",
       "location": "Kasarani, Nairobi",
@@ -41,17 +31,6 @@
       "status": "Active",
       "paymentStatus": "Paid",
       "propertyId": 1,
-      "archived": false
-    },
-    {
-      "id": 2,
-      "name": "James Kiprotich",
-      "unit": "Green Valley - Unit 12B",
-      "phone": "+254722987654",
-      "rentAmount": 55000,
-      "status": "Active",
-      "paymentStatus": "Overdue",
-      "propertyId": 2,
       "archived": false
     },
     {
@@ -123,6 +102,17 @@
       "reference": "REF-1755091476530",
       "archived": false,
       "id": 2
+    },
+    {
+      "tenantId": 5,
+      "leaseId": 4,
+      "amount": 50000,
+      "method": "M-Pesa",
+      "date": "2025-08-13T12:34:00.000Z",
+      "status": "Completed",
+      "reference": "mxdawedexifb",
+      "archived": false,
+      "id": 3
     }
   ],
   "maintenanceRequests": [
@@ -136,24 +126,18 @@
       "dateSubmitted": "2024-01-08",
       "estimatedCost": 3500,
       "archived": false
-    },
-    {
-      "id": 2,
-      "propertyId": 2,
-      "tenantId": 2,
-      "title": "Broken Window Lock",
-      "priority": "Low",
-      "status": "Pending",
-      "dateSubmitted": "2024-01-07",
-      "estimatedCost": 1200,
-      "archived": false
     }
   ],
   "settings": {
     "id": 1,
     "currency": "KES",
     "locale": "en-KE",
-    "theme": "light"
+    "theme": "dark",
+    "contactEmail": "",
+    "contactPhone": "",
+    "emailEnabled": true,
+    "smsEnabled": true,
+    "pushEnabled": true
   },
   "notifications": [
     {

@@ -1,73 +1,110 @@
-import { useQuery } from "@tanstack/react-query";
-import { api, queryKeys } from "@/lib/api";
-import type { MaintenanceRequest } from "@/types/entities";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogTrigger } from "@/components/ui/dialog";
+import { FileDown, FileSpreadsheet, FileText, Plus } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import MaintenanceFilters from "@/components/maintenance/MaintenanceFilters";
+import MaintenanceTable from "@/components/maintenance/MaintenanceTable";
+import MaintenanceDialog from "@/components/maintenance/MaintenanceDialog";
+import { useMaintenanceData } from "@/hooks/useMaintenanceData";
+import { exportMaintenanceCSV, exportMaintenancePDF } from "@/utils/maintenanceExport";
+import type { ID, MaintenanceRequest } from "@/types/entities";
 
 export default function MaintenancePage() {
-  const { data: requests = [], isLoading, isError } = useQuery({
-    queryKey: queryKeys.resource("maintenanceRequests"),
-    queryFn: () => api.list("maintenanceRequests", { _sort: "dateSubmitted", _order: "desc" }),
-  });
+  const { properties, tenants, filtered, propertyById, tenantById, isLoading, isError, filters, setFilter, resetFilters, createRequest, updateRequest, deleteRequest, archiveRequest } = useMaintenanceData();
 
-  const statusClass = (status: MaintenanceRequest["status"]) =>
-    status === "Completed"
-      ? "bg-green-100 text-green-800"
-      : status === "In Progress"
-      ? "bg-blue-100 text-blue-800"
-      : status === "Pending"
-      ? "bg-yellow-100 text-yellow-800"
-      : "bg-gray-100 text-gray-800";
-
-  const priorityClass = (priority: MaintenanceRequest["priority"]) =>
-    priority === "Critical"
-      ? "bg-red-100 text-red-800"
-      : priority === "High"
-      ? "bg-orange-100 text-orange-800"
-      : priority === "Medium"
-      ? "bg-yellow-100 text-yellow-800"
-      : "bg-green-100 text-green-800";
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<MaintenanceRequest | null>(null);
+  const [confirmId, setConfirmId] = useState<ID | null>(null);
+  const [confirmArchive, setConfirmArchive] = useState<{ id: ID; archived: boolean } | null>(null);
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Maintenance</CardTitle>
+      <CardHeader className="space-y-1.5 p-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <CardTitle>Maintenance</CardTitle>
+          <p className="text-sm text-muted-foreground">{filtered.length} result{filtered.length === 1 ? "" : "s"}</p>
+        </div>
+        <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+          <MaintenanceFilters
+            search={filters.search}
+            onSearchChange={(v) => setFilter("search", v)}
+            properties={properties}
+            tenants={tenants}
+            status={filters.status}
+            setStatus={(v) => setFilter("status", v)}
+            priority={filters.priority}
+            setPriority={(v) => setFilter("priority", v)}
+            propertyId={filters.propertyId}
+            setPropertyId={(v) => setFilter("propertyId", v)}
+            tenantId={filters.tenantId}
+            setTenantId={(v) => setFilter("tenantId", v)}
+            from={filters.from}
+            setFrom={(v) => setFilter("from", v)}
+            to={filters.to}
+            setTo={(v) => setFilter("to", v)}
+            sortBy={filters.sortBy}
+            setSortBy={(v) => setFilter("sortBy", v)}
+            onReset={resetFilters}
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline"><FileDown className="h-4 w-4 mr-2" /> Export</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onClick={() => exportMaintenanceCSV(filtered, propertyById, tenantById)}><FileSpreadsheet className="h-4 w-4 mr-2" /> CSV</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportMaintenancePDF(filtered, propertyById, tenantById)}><FileText className="h-4 w-4 mr-2" /> PDF</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
+            <DialogTrigger asChild><Button className="bg-green-600 hover:bg-green-700"><Plus className="h-4 w-4 mr-2" /> Add Request</Button></DialogTrigger>
+            <MaintenanceDialog key={editing?.id ?? "new"} editing={editing} properties={properties} tenants={tenants} onSubmit={(values) => {
+              if (editing) updateRequest.mutate({ id: editing.id, values }, { onSuccess: () => setOpen(false) });
+              else createRequest.mutate(values as unknown as Omit<MaintenanceRequest, "id">, { onSuccess: () => setOpen(false) });
+            }} />
+          </Dialog>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading && <div>Loading...</div>}
         {isError && <div className="text-red-600">Failed to load maintenance requests.</div>}
         {!isLoading && !isError && (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Property</TableHead>
-                  <TableHead>Tenant</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Submitted</TableHead>
-                  <TableHead>Est. Cost</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {requests.map((r: MaintenanceRequest) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="font-medium">{r.title}</TableCell>
-                    <TableCell>{r.propertyId}</TableCell>
-                    <TableCell>{r.tenantId ?? "-"}</TableCell>
-                    <TableCell><Badge className={priorityClass(r.priority)}>{r.priority}</Badge></TableCell>
-                    <TableCell><Badge className={statusClass(r.status)}>{r.status}</Badge></TableCell>
-                    <TableCell>{new Date(r.dateSubmitted).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-orange-700">{r.estimatedCost?.toLocaleString() ?? "-"}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <div className="w-full overflow-x-hidden">
+            <MaintenanceTable
+              data={filtered}
+              propertyById={propertyById}
+              tenantById={tenantById}
+              onEdit={(r) => { setEditing(r); setOpen(true); }}
+              onArchiveToggle={(id, archived) => setConfirmArchive({ id, archived })}
+              onDelete={(id) => setConfirmId(id)}
+              onExportPDF={() => { /* per-row export optional */ }}
+            />
           </div>
         )}
       </CardContent>
+      <ConfirmDialog
+        open={confirmId !== null}
+        title={"Delete request?"}
+        message={"This will permanently remove the request."}
+        onCancel={() => setConfirmId(null)}
+        onConfirm={async () => {
+          if (confirmId != null) await deleteRequest.mutateAsync(confirmId);
+          setConfirmId(null);
+        }}
+      />
+      <ConfirmDialog
+        open={confirmArchive !== null}
+        title={confirmArchive?.archived ? "Unarchive request?" : "Archive request?"}
+        message={confirmArchive?.archived ? "This will unarchive the request." : "This will archive the request."}
+        onCancel={() => setConfirmArchive(null)}
+        onConfirm={async () => {
+          if (!confirmArchive) return;
+          await archiveRequest.mutateAsync({ id: confirmArchive.id, archived: confirmArchive.archived });
+          setConfirmArchive(null);
+        }}
+      />
     </Card>
   );
 }

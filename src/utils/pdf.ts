@@ -2,13 +2,13 @@ import type { Payment, Tenant, Lease, Property, Tenant as TenantType, Maintenanc
 
 type KeyVal = { label: string; value: string };
 
-async function createDoc() {
+async function createDoc(): Promise<import("jspdf").jsPDF> {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   return doc;
 }
 
-function drawHeader(doc: any, title: string, propertyName?: string) {
+function drawHeader(doc: import("jspdf").jsPDF, title: string, propertyName?: string) {
   const margin = 40;
   doc.setFontSize(18);
   doc.text(title, margin, margin);
@@ -19,7 +19,7 @@ function drawHeader(doc: any, title: string, propertyName?: string) {
   return margin + 44; // return content start Y
 }
 
-function drawKeyValues(doc: any, startY: number, pairs: KeyVal[], columns = 2) {
+function drawKeyValues(doc: import("jspdf").jsPDF, startY: number, pairs: KeyVal[], columns = 2) {
   const margin = 40;
   const colWidth = (doc.internal.pageSize.getWidth() - margin * 2) / columns;
   const rowHeight = 18;
