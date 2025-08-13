@@ -41,11 +41,11 @@ export default function TenantsPage() {
     const status = params.get("status");
     if (status === "Active" || status === "Inactive") {
       setFilter("status", status as Tenant["status"]);
-      setFilter("showArchived", false as unknown as any);
+      setFilter("showArchived", false);
     }
     if (status === "Archived") {
       setFilter("status", undefined);
-      setFilter("showArchived", true as unknown as any);
+      setFilter("showArchived", true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
@@ -85,7 +85,7 @@ export default function TenantsPage() {
             </DialogTrigger>
             <TenantsDialog key={editing?.id ?? "new"} editing={editing} properties={properties} onSubmit={(values) => {
               if (editing) updateTenant.mutate({ id: editing.id, values }, { onSuccess: () => setOpen(false) });
-              else createTenant.mutate(values as unknown as Omit<Tenant, "id">, { onSuccess: () => setOpen(false) });
+              else createTenant.mutate(values as Omit<Tenant, "id">, { onSuccess: () => setOpen(false) });
             }} />
           </Dialog>
         </div>

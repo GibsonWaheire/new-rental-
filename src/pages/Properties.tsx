@@ -17,6 +17,20 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/use-toast";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import { 
+  Plus, 
+  Upload, 
+  Search, 
+  Filter, 
+  SortAsc, 
+  Edit, 
+  Trash2, 
+  ToggleLeft,
+  Building2,
+  Home,
+  MapPin
+} from "lucide-react";
 
 const propertySchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -26,7 +40,6 @@ const propertySchema = z.object({
     .number()
     .int()
     .nonnegative(),
-  monthlyRevenue: z.coerce.number().nonnegative(),
   status: z.enum(["Active", "Inactive"]).default("Active"),
 });
 
@@ -45,6 +58,10 @@ export default function PropertiesPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Property | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [confirmArchiveId, setConfirmArchiveId] = useState<ID | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState("");
+  const [sortBy, setSortBy] = useState("");
 
   const filtered = useMemo(
     () => properties.filter((p) => (showArchived ? true : !p.archived)),
@@ -53,7 +70,7 @@ export default function PropertiesPage() {
 
   const createMutation = useMutation({
     mutationFn: (values: PropertyFormValues) =>
-      api.create("properties", { ...values, archived: false } as Omit<Property, "id">),
+      api.create("properties", { ...values, monthlyRevenue: 0, archived: false } as Omit<Property, "id">),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.resource("properties") });
       toast({ title: "Property created" });
@@ -91,97 +108,203 @@ export default function PropertiesPage() {
   });
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-lg font-semibold">Properties</CardTitle>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setShowArchived((s) => !s)}>
-            {showArchived ? "Hide Archived" : "Show Archived"}
-          </Button>
-          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
-            <DialogTrigger asChild>
-              <Button className="bg-green-600 hover:bg-green-700">Add Property</Button>
-            </DialogTrigger>
-            <PropertyDialog
-              key={editing?.id ?? "new"}
-              editing={editing}
-              onSubmit={(values) => {
-                if (editing) {
-                  updateMutation.mutate({ id: editing.id, values });
-                } else {
-                  createMutation.mutate(values);
-                }
-              }}
-            />
-          </Dialog>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {isLoading && <div>Loading...</div>}
-        {isError && <div className="text-red-600">Failed to load properties.</div>}
+    <div className="space-y-6 p-6">
+      {/* Page Header */}
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold text-green-600">Properties</h1>
+      </div>
 
-        {!isLoading && !isError && (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Occupancy</TableHead>
-                  <TableHead>Monthly Revenue</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Archived</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.name}</TableCell>
-                    <TableCell>{p.location}</TableCell>
-                    <TableCell>
-                      {p.occupiedUnits}/{p.totalUnits} ({Math.round((p.occupiedUnits / Math.max(p.totalUnits, 1)) * 100)}%)
-                    </TableCell>
-                    <TableCell className="text-green-700">KES {p.monthlyRevenue.toLocaleString()}</TableCell>
-                    <TableCell>
-                      <Badge className={p.status === "Active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
-                        {p.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {p.archived ? (
-                        <Badge className="bg-gray-200 text-gray-800">Yes</Badge>
-                      ) : (
-                        <Badge variant="secondary">No</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Dialog onOpenChange={(v) => { if (!v) setEditing(null); }}>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={() => { setEditing(p); setOpen(true); }}>
-                            Edit
-                          </Button>
-                        </DialogTrigger>
-                      </Dialog>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => archiveMutation.mutate({ id: p.id, archived: !p.archived })}
-                      >
-                        {p.archived ? "Unarchive" : "Archive"}
-                      </Button>
-                      <Button variant="destructive" size="sm" onClick={() => deleteMutation.mutate(p.id)}>
-                        Delete
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+      {/* Action and Filter Bar */}
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-6">
+          <div className="space-y-4">
+            {/* Top Row - Action Buttons */}
+            <div className="flex items-center justify-between">
+              <Button className="bg-green-600 hover:bg-green-700 text-white">
+                <Plus className="h-4 w-4 mr-2" />
+                Add New Property
+              </Button>
+              <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
+                <Upload className="h-4 w-4 mr-2" />
+                Import Tenancies (Units + Tenants + Leases)
+              </Button>
+            </div>
+
+            {/* Bottom Row - Filters */}
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <Input
+                  placeholder="Search by name or address"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="max-w-md"
+                />
+              </div>
+              <Select value={filterType} onValueChange={setFilterType}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="-- Filter by Type --" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Types</SelectItem>
+                  <SelectItem value="Apartment">Apartment</SelectItem>
+                  <SelectItem value="Single-family home">Single-family home</SelectItem>
+                  <SelectItem value="Commercial">Commercial</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="-- Sort By --" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Default</SelectItem>
+                  <SelectItem value="name">Name</SelectItem>
+                  <SelectItem value="location">Location</SelectItem>
+                  <SelectItem value="totalUnits">Total Units</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button className="bg-green-600 hover:bg-green-700 text-white">
+                <Filter className="h-4 w-4 mr-2" />
+                Apply Filters
+              </Button>
+            </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      {/* Properties Table */}
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-0">
+          {isLoading && (
+            <div className="p-8 text-center text-gray-500">Loading properties...</div>
+          )}
+          {isError && (
+            <div className="p-8 text-center text-red-600">Failed to load properties.</div>
+          )}
+
+          {!isLoading && !isError && (
+            <div className="w-full overflow-x-hidden">
+              <Table className="w-full text-sm">
+                <TableHeader className="sticky top-0 z-10 bg-gray-50">
+                  <TableRow>
+                    <TableHead className="w-16">#</TableHead>
+                    <TableHead className="w-24">Image</TableHead>
+                    <TableHead>Name & Address</TableHead>
+                    <TableHead>Details</TableHead>
+                    <TableHead className="w-32">Status</TableHead>
+                    <TableHead className="w-48 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((p, index) => (
+                    <TableRow key={p.id} className="odd:bg-gray-50 hover:bg-gray-100/60">
+                      <TableCell className="font-medium text-gray-500">{index + 1}</TableCell>
+                      <TableCell>
+                        <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center">
+                          <Building2 className="h-8 w-8 text-blue-600" />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="font-semibold text-gray-900">{p.name}</div>
+                          <div className="flex items-center text-sm text-gray-600">
+                            <MapPin className="h-3 w-3 mr-1" />
+                            {p.location}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                              {p.totalUnits > 1 ? "Apartment" : "Single-family home"}
+                            </Badge>
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {p.totalUnits} unit{p.totalUnits !== 1 ? 's' : ''}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            Rent: KES {p.monthlyRevenue?.toLocaleString() || "0"} - {p.monthlyRevenue?.toLocaleString() || "0"}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className="bg-gray-100 text-gray-800">Available</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          <Dialog onOpenChange={(v) => { if (!v) setEditing(null); }}>
+                            <DialogTrigger asChild>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => { setEditing(p); setOpen(true); }}
+                                className="h-8 w-8 p-0"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                          </Dialog>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => setConfirmArchiveId(p.id)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                          <div className="flex items-center space-x-2">
+                            <ToggleLeft className="h-4 w-4 text-green-600" />
+                            <span className="text-xs text-gray-600">Available</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {filtered.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
+                        No properties found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Property Dialog */}
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
+        <DialogTrigger asChild>
+          <div className="hidden" />
+        </DialogTrigger>
+        <PropertyDialog
+          key={editing?.id ?? "new"}
+          editing={editing}
+          onSubmit={(values) => {
+            if (editing) {
+              updateMutation.mutate({ id: editing.id, values });
+            } else {
+              createMutation.mutate(values);
+            }
+          }}
+        />
+      </Dialog>
+
+      {/* Confirm Archive Dialog */}
+      <ConfirmDialog
+        open={confirmArchiveId !== null}
+        title="Delete property?"
+        message="You are about to delete this item. It will be moved to Archive and can be permanently deleted later."
+        onCancel={() => setConfirmArchiveId(null)}
+        onConfirm={async () => {
+          if (confirmArchiveId == null) return;
+          await archiveMutation.mutateAsync({ id: confirmArchiveId, archived: true });
+          setConfirmArchiveId(null);
+        }}
+      />
+    </div>
   );
 }
 
@@ -194,7 +317,6 @@ function PropertyDialog({ editing, onSubmit }: { editing: Property | null; onSub
           location: editing.location,
           totalUnits: editing.totalUnits,
           occupiedUnits: editing.occupiedUnits,
-          monthlyRevenue: editing.monthlyRevenue,
           status: editing.status,
         }
       : {
@@ -202,7 +324,6 @@ function PropertyDialog({ editing, onSubmit }: { editing: Property | null; onSub
           location: "",
           totalUnits: 0,
           occupiedUnits: 0,
-          monthlyRevenue: 0,
           status: "Active",
         },
   });
@@ -216,7 +337,7 @@ function PropertyDialog({ editing, onSubmit }: { editing: Property | null; onSub
   });
 
   return (
-    <DialogContent>
+    <DialogContent className="max-w-2xl">
       <DialogHeader>
         <DialogTitle>{editing ? "Edit Property" : "Add Property"}</DialogTitle>
       </DialogHeader>
@@ -251,13 +372,6 @@ function PropertyDialog({ editing, onSubmit }: { editing: Property | null; onSub
           )}
         </div>
 
-        <div>
-          <Label htmlFor="monthlyRevenue">Monthly Revenue (KES)</Label>
-          <Input id="monthlyRevenue" type="number" min={0} {...form.register("monthlyRevenue", { valueAsNumber: true })} />
-          {form.formState.errors.monthlyRevenue && (
-            <p className="text-sm text-red-600 mt-1">{form.formState.errors.monthlyRevenue.message}</p>
-          )}
-        </div>
         <div>
           <Label htmlFor="status">Status</Label>
           <Select

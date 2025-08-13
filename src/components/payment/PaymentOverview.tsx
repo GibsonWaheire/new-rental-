@@ -8,9 +8,9 @@ import type { Payment, Tenant } from "@/types/entities";
 import { Link } from "react-router-dom";
 
 export const PaymentOverview = ({ compact = false }: { compact?: boolean }) => {
-  const { data: payments = [], isLoading } = useQuery({ queryKey: queryKeys.resource("payments"), queryFn: () => api.list("payments", { _sort: "date", _order: "desc", _limit: 5 }) });
-  const { data: tenants = [] } = useQuery({ queryKey: queryKeys.resource("tenants"), queryFn: () => api.list("tenants") });
-  const tenantById = new Map((tenants as Tenant[]).map((t) => [t.id, t] as const));
+  const { data: payments = [], isLoading } = useQuery<Payment[]>({ queryKey: queryKeys.resource("payments"), queryFn: () => api.list("payments", { _sort: "date", _order: "desc", _limit: 5 }) });
+  const { data: tenants = [] } = useQuery<Tenant[]>({ queryKey: queryKeys.resource("tenants"), queryFn: () => api.list("tenants") });
+  const tenantById = new Map(tenants.map((t) => [t.id, t] as const));
 
   const getStatusBadgeColor = (status: Payment["status"]) => status === "Completed" ? "bg-green-100 text-green-800" : status === "Pending" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800";
   const getMethodIcon = (method: Payment["method"]) => method === "M-Pesa" ? "📱" : method === "Bank Transfer" ? "🏦" : method === "Cash" ? "💵" : "💳";
@@ -25,11 +25,11 @@ export const PaymentOverview = ({ compact = false }: { compact?: boolean }) => {
       </CardHeader>
       <CardContent>
         {isLoading && <div className="text-sm text-muted-foreground">Loading payments...</div>}
-        {!isLoading && (payments as Payment[]).length === 0 && (
+        {!isLoading && payments.length === 0 && (
           <div className="text-sm text-muted-foreground">No recent payments.</div>
         )}
         <div className="space-y-4">
-          {(payments as Payment[]).filter((p) => !(p as any).archived).map((payment) => (
+          {payments.filter((p) => !p.archived).map((payment) => (
             <div key={payment.id} className={`border rounded-lg ${compact ? "p-3" : "p-4"} hover:bg-gray-50 transition-colors`}>
               <div className="flex items-start justify-between mb-2">
                 <div>

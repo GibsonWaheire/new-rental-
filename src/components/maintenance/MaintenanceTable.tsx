@@ -31,7 +31,11 @@ interface MaintenanceTableProps {
 
 export default function MaintenanceTable({ data, propertyById, tenantById, onEdit, onArchiveToggle, onDelete, onExportPDF }: MaintenanceTableProps) {
   const [expanded, setExpanded] = useState<Set<ID>>(new Set());
-  const toggle = (id: ID) => { const next = new Set(expanded); next.has(id) ? next.delete(id) : next.add(id); setExpanded(next); };
+  const toggle = (id: ID) => { 
+    const next = new Set(expanded); 
+    next.has(id) ? next.delete(id) : next.add(id); 
+    setExpanded(next); 
+  };
 
   return (
     <div className="w-full overflow-x-hidden">
@@ -59,7 +63,7 @@ export default function MaintenanceTable({ data, propertyById, tenantById, onEdi
                 </TableCell>
                 <TableCell className="font-medium truncate max-w-[220px]" title={r.title}>{r.title}</TableCell>
                 <TableCell className="truncate max-w-[180px]" title={propertyById.get(r.propertyId)?.name}>{propertyById.get(r.propertyId)?.name ?? r.propertyId}</TableCell>
-                <TableCell className="truncate max-w-[180px]" title={r.tenantId ? tenantById.get(r.tenantId)?.name : "-"}>{r.tenantId ? (tenantById.get(r.tenantId)?.name ?? r.tenantId) : "-"}</TableCell>
+                <TableCell className="truncate max-w-[180px]" title={r.tenantId ? String(tenantById.get(r.tenantId)?.name || r.tenantId) : "-"}>{r.tenantId ? (tenantById.get(r.tenantId)?.name ?? r.tenantId) : "-"}</TableCell>
                 <TableCell><Badge className={`${priorityClass(r.priority)} uppercase tracking-wide px-2 py-0.5`}>{r.priority}</Badge></TableCell>
                 <TableCell><Badge className={`${statusClass(r.status)} uppercase tracking-wide px-2 py-0.5`}>{r.status}</Badge></TableCell>
                 <TableCell className="whitespace-nowrap">{new Date(r.dateSubmitted).toLocaleDateString()}</TableCell>

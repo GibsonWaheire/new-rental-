@@ -19,7 +19,14 @@ export default defineConfig({
 
   server: {
     host: '::',      // listen on all IPv4 & IPv6 interfaces
-    port: 8080
+    port: 8080,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5178',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      }
+    }
   },
 
   plugins: [

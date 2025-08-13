@@ -27,9 +27,9 @@ export default function SettingsPage() {
         <section>
           <h3 className="font-semibold mb-2">Profile</h3>
           <ProfileSection
-            brandLogoUrl={(settings as any).brandLogoUrl}
-            contactEmail={(settings as any).contactEmail}
-            contactPhone={(settings as any).contactPhone}
+            brandLogoUrl={settings.brandLogoUrl}
+            contactEmail={settings.contactEmail}
+            contactPhone={settings.contactPhone}
             onUpdate={(p) => update.mutate(p)}
           />
         </section>
@@ -42,9 +42,9 @@ export default function SettingsPage() {
         <section>
           <h3 className="font-semibold mb-2">Notifications</h3>
           <NotificationsSection
-            emailEnabled={(settings as any).emailEnabled}
-            smsEnabled={(settings as any).smsEnabled}
-            pushEnabled={(settings as any).pushEnabled}
+            emailEnabled={settings.emailEnabled}
+            smsEnabled={settings.smsEnabled}
+            pushEnabled={settings.pushEnabled}
             onUpdate={(p) => update.mutate(p)}
           />
         </section>

@@ -1,6 +1,6 @@
 import type { EntityMap, ID } from "@/types/entities";
 
-export const API_BASE_URL = "http://localhost:5178"; // json-server default per package script
+export const API_BASE_URL = (import.meta.env?.VITE_API_URL as string) || `${window.location.origin}/api`; // use proxy in dev; override with VITE_API_URL if set
 
 async function request<TResponse>(input: RequestInfo, init?: RequestInit): Promise<TResponse> {
   const resp = await fetch(input, {

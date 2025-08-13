@@ -58,6 +58,12 @@ export interface AppSettings extends BaseEntity {
   currency: string; // e.g., "KES"
   locale: string;   // e.g., "en-KE"
   theme: "light" | "dark";
+  brandLogoUrl?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  emailEnabled?: boolean;
+  smsEnabled?: boolean;
+  pushEnabled?: boolean;
 }
 
 export interface Notification extends BaseEntity {

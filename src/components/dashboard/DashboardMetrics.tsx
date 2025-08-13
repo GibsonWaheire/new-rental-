@@ -6,25 +6,25 @@ import { useNavigate } from "react-router-dom";
 
 export const DashboardMetrics = ({ compact = false }: { compact?: boolean }) => {
   const navigate = useNavigate();
-  const { data: tenants = [] } = useQuery({ queryKey: queryKeys.resource("tenants"), queryFn: () => api.list("tenants") });
-  const { data: leases = [] } = useQuery({ queryKey: queryKeys.resource("leases"), queryFn: () => api.list("leases") });
-  const { data: payments = [] } = useQuery({ queryKey: queryKeys.resource("payments"), queryFn: () => api.list("payments") });
-  const { data: maintenance = [] } = useQuery({ queryKey: queryKeys.resource("maintenanceRequests"), queryFn: () => api.list("maintenanceRequests") });
-  const { data: properties = [] } = useQuery({ queryKey: queryKeys.resource("properties"), queryFn: () => api.list("properties") });
+  const { data: tenants = [] } = useQuery<Tenant[]>({ queryKey: queryKeys.resource("tenants"), queryFn: () => api.list("tenants") });
+  const { data: leases = [] } = useQuery<Lease[]>({ queryKey: queryKeys.resource("leases"), queryFn: () => api.list("leases") });
+  const { data: payments = [] } = useQuery<Payment[]>({ queryKey: queryKeys.resource("payments"), queryFn: () => api.list("payments") });
+  const { data: maintenance = [] } = useQuery<MaintenanceRequest[]>({ queryKey: queryKeys.resource("maintenanceRequests"), queryFn: () => api.list("maintenanceRequests") });
+  const { data: properties = [] } = useQuery<Property[]>({ queryKey: queryKeys.resource("properties"), queryFn: () => api.list("properties") });
 
-  const activeTenants = (tenants as Tenant[]).filter((t) => !t.archived && t.status === "Active").length;
-  const pendingPayments = (payments as Payment[]).filter((p) => !(p as any).archived && p.status === "Pending").length;
-  const overduePayments = (payments as Payment[]).filter((p) => !(p as any).archived && p.status === "Overdue").length;
-  const openMaintenance = (maintenance as MaintenanceRequest[]).filter((m) => !m.archived && m.status !== "Completed").length;
-  const upcomingRenewals = (leases as Lease[]).filter((l) => {
+  const activeTenants = tenants.filter((t) => !t.archived && t.status === "Active").length;
+  const pendingPayments = payments.filter((p) => !p.archived && p.status === "Pending").length;
+  const overduePayments = payments.filter((p) => !p.archived && p.status === "Overdue").length;
+  const openMaintenance = maintenance.filter((m) => !m.archived && m.status !== "Completed").length;
+  const upcomingRenewals = leases.filter((l) => {
     const end = new Date(l.endDate).getTime();
     const now = Date.now();
     const days = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
-    return !(l as any).archived && days <= 30 && days >= 0;
+    return !l.archived && days <= 30 && days >= 0;
   }).length;
-  const totalProperties = (properties as Property[]).filter((p) => !p.archived).length;
-  const revenueThisMonth = (payments as Payment[])
-    .filter((p) => !(p as any).archived && p.status === "Completed" && new Date(p.date).getMonth() === new Date().getMonth() && new Date(p.date).getFullYear() === new Date().getFullYear())
+  const totalProperties = properties.filter((p) => !p.archived).length;
+  const revenueThisMonth = payments
+    .filter((p) => !p.archived && p.status === "Completed" && new Date(p.date).getMonth() === new Date().getMonth() && new Date(p.date).getFullYear() === new Date().getFullYear())
     .reduce((sum, p) => sum + p.amount, 0);
 
   const cards = [
