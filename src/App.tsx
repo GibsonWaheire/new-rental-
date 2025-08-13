@@ -7,8 +7,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import AppLayout from "@/layouts/AppLayout";
 import Index from "@/pages/Index";
 import Tenants from "@/pages/Tenants";
+import TenantsArchive from "@/pages/TenantsArchive";
 import Properties from "@/pages/Properties";
 import Leases from "@/pages/Leases";
+import LeasesArchive from "@/pages/LeasesArchive";
 import Notifications from "@/pages/Notifications";
 import Settings from "@/pages/Settings";
 import Payments from "@/pages/Payments";
@@ -29,7 +31,9 @@ export default function App() {
               <Route index element={<Index />} />
               <Route path="properties" element={<Properties />} />
               <Route path="tenants" element={<Tenants />} />
+              <Route path="tenants/archive" element={<TenantsArchive />} />
               <Route path="leases" element={<Leases />} />
+              <Route path="leases/archive" element={<LeasesArchive />} />
               <Route path="payments" element={<Payments />} />
               <Route path="maintenance" element={<Maintenance />} />
               <Route path="notifications" element={<Notifications />} />

@@ -13,6 +13,7 @@ import { usePaymentsData } from "@/hooks/usePaymentsData";
 import { exportPaymentsCSV, exportPaymentsPDF } from "@/utils/paymentsExport";
 import { generatePaymentReceiptPDF } from "@/utils/pdf";
 import { Badge } from "@/components/ui/badge";
+import { Link, useLocation } from "react-router-dom";
 import { formatAmountKES } from "@/utils/paymentsHelpers";
 
 export default function PaymentsPage() {
@@ -29,9 +30,16 @@ export default function PaymentsPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const pageData = filtered.slice((page - 1) * pageSize, page * pageSize);
 
+  const location = useLocation();
   useEffect(() => {
     setPage(1);
   }, [filters, compact]);
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const status = params.get("status");
+    if (status) setFilter("filterStatus", status);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
 
   return (
     <Card className="h-[calc(100vh-2rem)] flex flex-col">
@@ -80,6 +88,9 @@ export default function PaymentsPage() {
               <DropdownMenuItem onClick={() => exportPaymentsPDF(filtered, tenantById, leaseById, propertyById)}><FileText className="h-4 w-4 mr-2" /> PDF</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <Button asChild variant="outline">
+            <Link to="/payments?status=Archived">View Archive</Link>
+          </Button>
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
             <DialogTrigger asChild><Button className="bg-green-600 hover:bg-green-700"><Plus className="h-4 w-4 mr-2" /> Add Payment</Button></DialogTrigger>
             <PaymentDialog key={editing?.id ?? "new"} editing={editing} tenants={tenants} leases={leases} onSubmit={(values) => {
@@ -99,7 +110,7 @@ export default function PaymentsPage() {
           <div className="w-full h-full overflow-hidden flex flex-col">
             <div className="flex items-center gap-2 mb-2 shrink-0">
               <Button variant="outline" onClick={() => setSelected(new Set())}>Clear Selection</Button>
-              <Button variant="outline" onClick={() => setConfirmPaymentId(-1 as ID)} disabled={selected.size === 0}>Bulk Delete</Button>
+              <Button variant="outline" onClick={() => setConfirmPaymentId(-1 as ID)} disabled={selected.size === 0}>Bulk Archive</Button>
               <Button variant="outline" onClick={() => bulkMarkPaid([...selected])} disabled={selected.size === 0}>Mark Paid</Button>
             </div>
             <div className="flex-1 min-h-0 w-full overflow-hidden rounded-md">
@@ -135,12 +146,12 @@ export default function PaymentsPage() {
       </CardContent>
       <ConfirmDialog
         open={confirmPaymentId !== null}
-        title={confirmPaymentId === -1 ? "Delete selected payments?" : "Delete payment?"}
-        message={confirmPaymentId === -1 ? "This will permanently remove the selected payments." : "This will permanently remove the payment."}
+        title={confirmPaymentId === -1 ? "Archive selected payments?" : "Archive payment?"}
+        message={confirmPaymentId === -1 ? "You are about to delete these items. They will be moved to Archive and can be permanently deleted later." : "You are about to delete this item. It will be moved to Archive and can be permanently deleted later."}
         onCancel={() => setConfirmPaymentId(null)}
         onConfirm={async () => {
           if (confirmPaymentId === -1) { await bulkDelete([...selected]); setSelected(new Set()); }
-          else if (confirmPaymentId != null) { await deletePayment.mutateAsync(confirmPaymentId); }
+          else if (confirmPaymentId != null) { await archivePayment.mutateAsync({ id: confirmPaymentId, archived: true }); }
           setConfirmPaymentId(null);
         }}
       />

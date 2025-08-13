@@ -14,25 +14,28 @@ import {
   Bell,
   Plus,
 } from "lucide-react";
+import { useSidebarCounts } from "@/hooks/useSidebarCounts";
 
 interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
 }
 
-const menuItems = [
-  { icon: Home, label: "Dashboard", path: "/" },
-  { icon: MapPin, label: "Properties", path: "/properties", count: 5 },
-  { icon: User, label: "Tenants", path: "/tenants", count: 23 },
-  { icon: Calendar, label: "Leases", path: "/leases", count: 18 },
-  { icon: FileText, label: "Payments", path: "/payments" },
-  { icon: Bell, label: "Maintenance", path: "/maintenance", count: 3 },
-  { icon: Settings, label: "Settings", path: "/settings" },
-  { icon: Bell, label: "Notifications", path: "/notifications" },
-  { icon: Plus, label: "Quick Add", path: "/quick-add" },
-];
+export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
+  const counts = useSidebarCounts();
+  const menuItems = [
+    { icon: Home, label: "Dashboard", path: "/" },
+    { icon: MapPin, label: "Properties", path: "/properties" },
+    { icon: User, label: "Tenants", path: "/tenants", count: counts.tenants },
+    { icon: Calendar, label: "Leases", path: "/leases", count: counts.leases },
+    { icon: FileText, label: "Payments", path: "/payments", count: counts.payments },
+    { icon: Bell, label: "Maintenance", path: "/maintenance", count: counts.maintenance },
+    { icon: Settings, label: "Settings", path: "/settings" },
+    { icon: Bell, label: "Notifications", path: "/notifications" },
+    { icon: Plus, label: "Quick Add", path: "/quick-add" },
+  ];
 
-export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => (
+  return (
   <div
     className={clsx(
       "fixed left-0 top-0 h-full bg-white border-r border-gray-200 transition-all duration-300 z-20",
@@ -87,7 +90,7 @@ export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => (
           {isOpen && (
             <>
               <span className="ml-3 flex-1 text-left">{label}</span>
-              {count && (
+              {typeof count === "number" && (
                 <Badge variant="secondary" className="ml-2">
                   {count}
                 </Badge>
@@ -117,4 +120,5 @@ export const Sidebar = ({ isOpen, onToggle }: SidebarProps) => (
       </div>
     )}
   </div>
-);
+  );
+};

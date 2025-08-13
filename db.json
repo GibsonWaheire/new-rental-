@@ -31,15 +31,15 @@
       "status": "Active",
       "paymentStatus": "Paid",
       "propertyId": 1,
-      "archived": false
+      "archived": true
     },
     {
       "name": "Mcgibs",
       "phone": "+254757556439",
-      "unit": "",
-      "rentAmount": 0,
+      "unit": "14",
+      "rentAmount": 300,
       "status": "Active",
-      "paymentStatus": "Pending",
+      "paymentStatus": "Paid",
       "propertyId": 1,
       "archived": false,
       "id": 4
@@ -54,6 +54,17 @@
       "propertyId": 1,
       "archived": true,
       "id": 5
+    },
+    {
+      "name": "Gibson",
+      "unit": "12",
+      "phone": "+254726899113",
+      "rentAmount": 20000,
+      "status": "Active",
+      "paymentStatus": "Paid",
+      "propertyId": 1,
+      "archived": true,
+      "id": 6
     }
   ],
   "leases": [

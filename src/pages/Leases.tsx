@@ -1,9 +1,9 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 import { api, queryKeys } from "@/lib/api";
 import type { Lease, Tenant, Property, ID, LeaseDocument, Notification } from "@/types/entities";
@@ -19,6 +19,9 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/use-toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { generateLeasePDF } from "@/utils/pdf";
+import LeasesFilters from "@/components/leases/LeasesFilters";
+import LeasesTable from "@/components/leases/LeasesTable";
+import { useLeasesData, type LeasesSortBy } from "../hooks/useLeasesData";
 
 type SortKey = "start" | "end" | "rent";
 
@@ -55,108 +58,26 @@ function useProperties() {
 
 export default function LeasesPage() {
   const qc = useQueryClient();
-  const { data: leases = [], isLoading, isError } = useLeases();
-  const { data: tenants = [] } = useTenants();
-  const { data: properties = [] } = useProperties();
+  const location = useLocation();
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const status = params.get("status");
+    const allowed = ["Active","Expired","Pending Renewal","Pending","Archived"] as const;
+    if (status && (allowed as readonly string[]).includes(status)) {
+      setFilter("status", status as (typeof allowed)[number]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
+  const { tenants, properties, tenantById, propertyById, filtered, computedStatus, isLoading, isError, filters, setFilter, resetFilters, createLease, updateLease, archiveLease, deleteLeasePermanent } = useLeasesData();
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Lease | null>(null);
   const [renewing, setRenewing] = useState<Lease | null>(null);
-  const [showArchived, setShowArchived] = useState(false);
-  const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
-  const [filterProperty, setFilterProperty] = useState<number | undefined>(undefined);
-  const [filterTenant, setFilterTenant] = useState<number | undefined>(undefined);
-  const [sortBy, setSortBy] = useState<SortKey>("end");
+  
 
-  const tenantById = useMemo(() => {
-    const m = new Map<number, Tenant>();
-    tenants.forEach((t) => m.set(t.id, t));
-    return m;
-  }, [tenants]);
-  const propertyById = useMemo(() => {
-    const m = new Map<number, Property>();
-    properties.forEach((p) => m.set(p.id, p));
-    return m;
-  }, [properties]);
+  
 
-  const computedStatus = (l: Lease): "Active" | "Expired" | "Pending Renewal" | "Pending" => {
-    const now = new Date();
-    const end = new Date(l.endDate);
-    const days = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    if (days < 0) return "Expired";
-    if (days <= 30) return "Pending Renewal";
-    if (l.status === "Pending") return "Pending";
-    return "Active";
-  };
-
-  const filtered = useMemo(() => {
-    let list = leases.filter((l) => (showArchived ? true : !(l as unknown as { archived?: boolean }).archived));
-    if (search) {
-      const s = search.toLowerCase();
-      list = list.filter((l) =>
-        [
-          propertyById.get(l.propertyId)?.name,
-          tenantById.get(l.tenantId)?.name,
-          l.unit,
-        ]
-          .filter(Boolean)
-          .some((v) => String(v).toLowerCase().includes(s))
-      );
-    }
-    if (filterStatus) list = list.filter((l) => computedStatus(l) === filterStatus);
-    if (filterProperty) list = list.filter((l) => l.propertyId === filterProperty);
-    if (filterTenant) list = list.filter((l) => l.tenantId === filterTenant);
-
-    switch (sortBy) {
-      case "start":
-        list = [...list].sort((a, b) => +new Date(a.startDate) - +new Date(b.startDate));
-        break;
-      case "rent":
-        list = [...list].sort((a, b) => b.rentAmount - a.rentAmount);
-        break;
-      case "end":
-      default:
-        list = [...list].sort((a, b) => +new Date(a.endDate) - +new Date(b.endDate));
-    }
-    return list;
-  }, [leases, showArchived, search, filterStatus, filterProperty, filterTenant, sortBy, propertyById, tenantById]);
-
-  const createLease = useMutation({
-    mutationFn: (values: LeaseFormValues) => api.create("leases", { ...values, archived: false } as Omit<Lease, "id">),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.resource("leases") });
-      toast({ title: "Lease created" });
-      setOpen(false);
-    },
-    onError: (e: unknown) => toast({ title: "Create failed", description: String(e) }),
-  });
-  const updateLease = useMutation({
-    mutationFn: ({ id, values }: { id: ID; values: Partial<Lease> }) => api.update("leases", id, values),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.resource("leases") });
-      toast({ title: "Lease updated" });
-      setOpen(false);
-      setRenewing(null);
-    },
-    onError: (e: unknown) => toast({ title: "Update failed", description: String(e) }),
-  });
-  const deleteLease = useMutation({
-    mutationFn: (id: ID) => api.remove("leases", id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.resource("leases") });
-      toast({ title: "Lease deleted" });
-    },
-    onError: (e: unknown) => toast({ title: "Delete failed", description: String(e) }),
-  });
-  const archiveLease = useMutation({
-    mutationFn: ({ id, archived }: { id: ID; archived: boolean }) => api.update("leases", id, { archived } as Partial<Lease>),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.resource("leases") });
-      toast({ title: "Lease updated" });
-    },
-    onError: (e: unknown) => toast({ title: "Archive failed", description: String(e) }),
-  });
+  // Mutations provided by useLeasesData hook: createLease, updateLease, archiveLease, deleteLeasePermanent
 
   const exportPDF = async (l: Lease) => {
     const blob = await generateLeasePDF(l, tenantById.get(l.tenantId), propertyById.get(l.propertyId));
@@ -184,40 +105,28 @@ export default function LeasesPage() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <CardHeader className="space-y-1.5 p-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <CardTitle>Leases</CardTitle>
         <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
-          <Input placeholder="Search leases..." value={search} onChange={(e) => setSearch(e.target.value)} />
-          <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v)}>
-            <SelectTrigger className="min-w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Active">Active</SelectItem>
-              <SelectItem value="Pending Renewal">Pending Renewal</SelectItem>
-              <SelectItem value="Expired">Expired</SelectItem>
-              <SelectItem value="Pending">Pending</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filterProperty ? String(filterProperty) : undefined} onValueChange={(v) => setFilterProperty(Number(v))}>
-            <SelectTrigger className="min-w-[160px]"><SelectValue placeholder="Property" /></SelectTrigger>
-            <SelectContent>
-              {properties.map((p) => (<SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>))}
-            </SelectContent>
-          </Select>
-          <Select value={filterTenant ? String(filterTenant) : undefined} onValueChange={(v) => setFilterTenant(Number(v))}>
-            <SelectTrigger className="min-w-[160px]"><SelectValue placeholder="Tenant" /></SelectTrigger>
-            <SelectContent>
-              {tenants.map((t) => (<SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>))}
-            </SelectContent>
-          </Select>
-          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
-            <SelectTrigger className="min-w-[160px]"><SelectValue placeholder="Sort by" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="start">Start date</SelectItem>
-              <SelectItem value="end">End date</SelectItem>
-              <SelectItem value="rent">Rent</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline" onClick={() => setShowArchived((s) => !s)}>{showArchived ? "Hide Archived" : "Show Archived"}</Button>
+          <LeasesFilters
+            search={filters.search}
+            onSearchChange={(v) => setFilter("search", v)}
+            properties={properties}
+            tenants={tenants}
+            status={filters.status}
+            setStatus={(v) => setFilter("status", v)}
+            propertyId={filters.propertyId}
+            setPropertyId={(v) => setFilter("propertyId", v)}
+            tenantId={filters.tenantId}
+            setTenantId={(v) => setFilter("tenantId", v)}
+            sortBy={filters.sortBy}
+            setSortBy={(v) => setFilter("sortBy", v as LeasesSortBy)}
+            onReset={resetFilters}
+          />
+          <Button asChild variant="outline">
+            <Link to="/leases/archive">View Archive</Link>
+          </Button>
+          <Button variant="outline" onClick={() => setFilter("showArchived", !filters.showArchived)}>{filters.showArchived ? "Hide Archived" : "Show Archived"}</Button>
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
             <DialogTrigger asChild>
               <Button className="bg-green-600 hover:bg-green-700">Add Lease</Button>
@@ -228,7 +137,7 @@ export default function LeasesPage() {
               tenants={tenants}
               properties={properties}
               onSubmit={(values) => {
-                if (editing) updateLease.mutate({ id: editing.id, values }); else createLease.mutate(values);
+                if (editing) updateLease.mutate({ id: editing.id, values }); else createLease.mutate(values as Omit<Lease, "id">);
               }}
             />
           </Dialog>
@@ -238,37 +147,19 @@ export default function LeasesPage() {
         {isLoading && <div>Loading...</div>}
         {isError && <div className="text-red-600">Failed to load leases.</div>}
         {!isLoading && !isError && (
-          <div className="overflow-x-auto">
-            <Table className="w-full text-sm">
-              <TableHeader className="sticky top-0 z-10 bg-white shadow-sm">
-                <TableRow>
-                  <TableHead>Property</TableHead>
-                  <TableHead>Tenant</TableHead>
-                  <TableHead>Unit</TableHead>
-                  <TableHead>Period</TableHead>
-                  <TableHead className="text-right">Rent</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((l) => (
-                  <LeaseRow
-                    key={l.id}
-                    lease={l}
-                    propertyName={propertyById.get(l.propertyId)?.name ?? String(l.propertyId)}
-                    tenantName={tenantById.get(l.tenantId)?.name ?? String(l.tenantId)}
-                    status={computedStatus(l)}
-                    onEdit={() => { setEditing(l); setOpen(true); }}
-                    onArchive={() => setConfirmArchive({ id: l.id, archived: !(l as unknown as { archived?: boolean }).archived })}
-                    onDelete={() => setConfirmLeaseId(l.id)}
-                    onDownload={() => exportPDF(l)}
-                    onRenew={() => setRenewing(l)}
-                    onReminder={() => sendExpiryReminder.mutate(l)}
-                  />
-                ))}
-              </TableBody>
-            </Table>
+          <div className="w-full overflow-x-hidden">
+            <LeasesTable
+              data={filtered}
+              propertyById={propertyById}
+              tenantById={tenantById}
+              computedStatus={computedStatus}
+              onEdit={(l) => { setEditing(l); setOpen(true); }}
+              onArchiveToggle={(id, archived) => setConfirmArchive({ id, archived })}
+              onDelete={(id) => setConfirmLeaseId(id)}
+              onDownload={(l) => exportPDF(l)}
+              onRenew={(l) => setRenewing(l)}
+              onReminder={(l) => sendExpiryReminder.mutate(l)}
+            />
           </div>
         )}
       </CardContent>
@@ -280,22 +171,19 @@ export default function LeasesPage() {
               base={renewing}
               tenants={tenants}
               properties={properties}
-              onSubmit={(values) => createLease.mutate(values)}
+              onSubmit={(values) => createLease.mutate(values as Omit<Lease, "id">)}
             />
           )}
         </DialogContent>
       </Dialog>
       <ConfirmDialog
         open={confirmLeaseId !== null}
-        title="Delete lease?"
-        message="This will permanently remove the lease and its associated documents."
+        title="Archive lease?"
+        message="You are about to delete this item. It will be moved to Archive and can be permanently deleted later."
         onCancel={() => setConfirmLeaseId(null)}
         onConfirm={async () => {
           if (confirmLeaseId == null) return;
-          // Delete associated documents first
-          const docs = await api.list("leaseDocuments", { leaseId: confirmLeaseId });
-          await Promise.all(docs.map((d: LeaseDocument) => api.remove("leaseDocuments", d.id)));
-          await deleteLease.mutateAsync(confirmLeaseId);
+          await archiveLease.mutateAsync({ id: confirmLeaseId, archived: true });
           setConfirmLeaseId(null);
         }}
       />

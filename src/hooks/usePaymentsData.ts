@@ -118,7 +118,7 @@ export function usePaymentsData() {
   });
 
   async function bulkDelete(ids: ID[]) {
-    await Promise.all(ids.map((id) => deletePayment.mutateAsync(id)));
+    await Promise.all(ids.map((id) => archivePayment.mutateAsync({ id, archived: true })));
   }
   async function bulkMarkPaid(ids: ID[]) {
     await Promise.all(ids.map((id) => updatePayment.mutateAsync({ id, values: { status: "Completed" } })));

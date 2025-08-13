@@ -1,59 +1,52 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
+import { api, queryKeys } from "@/lib/api";
+import type { Property, Tenant, Lease, Payment, MaintenanceRequest } from "@/types/entities";
+import { useNavigate } from "react-router-dom";
 
 export const DashboardMetrics = () => {
-  const metrics = [
-    {
-      title: "Total Properties",
-      value: "5",
-      change: "+1 this month",
-      changeType: "positive" as const,
-      icon: "🏢"
-    },
-    {
-      title: "Occupancy Rate",
-      value: "87.5%",
-      change: "+2.1% from last month",
-      changeType: "positive" as const,
-      icon: "📊"
-    },
-    {
-      title: "Monthly Revenue",
-      value: "KES 2,847,500",
-      change: "+12.5% from last month",
-      changeType: "positive" as const,
-      icon: "💰"
-    },
-    {
-      title: "Outstanding Rent",
-      value: "KES 425,000",
-      change: "-8.2% from last month",
-      changeType: "negative" as const,
-      icon: "⚠️"
-    }
+  const navigate = useNavigate();
+  const { data: tenants = [] } = useQuery({ queryKey: queryKeys.resource("tenants"), queryFn: () => api.list("tenants") });
+  const { data: leases = [] } = useQuery({ queryKey: queryKeys.resource("leases"), queryFn: () => api.list("leases") });
+  const { data: payments = [] } = useQuery({ queryKey: queryKeys.resource("payments"), queryFn: () => api.list("payments") });
+  const { data: maintenance = [] } = useQuery({ queryKey: queryKeys.resource("maintenanceRequests"), queryFn: () => api.list("maintenanceRequests") });
+  const { data: properties = [] } = useQuery({ queryKey: queryKeys.resource("properties"), queryFn: () => api.list("properties") });
+
+  const activeTenants = (tenants as Tenant[]).filter((t) => !t.archived && t.status === "Active").length;
+  const pendingPayments = (payments as Payment[]).filter((p) => !(p as any).archived && p.status === "Pending").length;
+  const overduePayments = (payments as Payment[]).filter((p) => !(p as any).archived && p.status === "Overdue").length;
+  const openMaintenance = (maintenance as MaintenanceRequest[]).filter((m) => !m.archived && m.status !== "Completed").length;
+  const upcomingRenewals = (leases as Lease[]).filter((l) => {
+    const end = new Date(l.endDate).getTime();
+    const now = Date.now();
+    const days = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+    return !(l as any).archived && days <= 30 && days >= 0;
+  }).length;
+  const totalProperties = (properties as Property[]).filter((p) => !p.archived).length;
+  const revenueThisMonth = (payments as Payment[])
+    .filter((p) => !(p as any).archived && p.status === "Completed" && new Date(p.date).getMonth() === new Date().getMonth() && new Date(p.date).getFullYear() === new Date().getFullYear())
+    .reduce((sum, p) => sum + p.amount, 0);
+
+  const cards = [
+    { title: "Active Tenants", value: String(activeTenants), icon: "👥", onClick: () => navigate(`/tenants?status=Active`) },
+    { title: "Pending Payments", value: String(pendingPayments), icon: "🧾", onClick: () => navigate(`/payments?status=Pending`) },
+    { title: "Overdue Payments", value: String(overduePayments), icon: "⚠️", onClick: () => navigate(`/payments?status=Overdue`) },
+    { title: "Open Maintenance", value: String(openMaintenance), icon: "🛠️", onClick: () => navigate(`/maintenance?status=Open`) },
+    { title: "Upcoming Renewals", value: String(upcomingRenewals), icon: "📅", onClick: () => navigate(`/leases?status=Pending%20Renewal`) },
+    { title: "Properties", value: String(totalProperties), icon: "🏢", onClick: () => navigate(`/properties`) },
+    { title: "Revenue (mo)", value: `KES ${revenueThisMonth.toLocaleString()}`, icon: "💰", onClick: () => navigate(`/payments?status=Completed`) },
   ];
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-      {metrics.map((metric) => (
-        <Card key={metric.title} className="hover:shadow-lg transition-shadow">
+      {cards.map((c) => (
+        <Card key={c.title} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={c.onClick}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
-              {metric.title}
-            </CardTitle>
-            <span className="text-2xl">{metric.icon}</span>
+            <CardTitle className="text-sm font-medium text-gray-600">{c.title}</CardTitle>
+            <span className="text-2xl">{c.icon}</span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900 mb-1">
-              {metric.value}
-            </div>
-            <Badge 
-              variant={metric.changeType === 'positive' ? 'default' : 'destructive'}
-              className="text-xs"
-            >
-              {metric.change}
-            </Badge>
+            <div className="text-2xl font-bold text-gray-900 mb-1">{c.value}</div>
           </CardContent>
         </Card>
       ))}
