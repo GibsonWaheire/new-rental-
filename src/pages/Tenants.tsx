@@ -17,10 +17,11 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/use-toast";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, CheckCircle, XCircle, AlertTriangle, Clock, FileDown, FileSpreadsheet, Pencil, Archive as ArchiveIcon, FileText, Bell, Trash2, Plus, List } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { generateTenantsPDF } from "@/utils/pdf";
+// removed tooltip on row actions to satisfy Radix single-child requirement
 
 const tenantSchema = z.object({
   name: z.string().min(2),
@@ -59,6 +60,7 @@ export default function TenantsPage() {
   const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
   const [filterProperty, setFilterProperty] = useState<number | undefined>(undefined);
   const [sortBy, setSortBy] = useState<string>("name");
+  const [compact, setCompact] = useState(false);
 
   const propertyById = useMemo(() => {
     const map = new Map<number, Property>();
@@ -90,6 +92,19 @@ export default function TenantsPage() {
     }
     return list;
   }, [tenants, showArchived, search, filterStatus, filterProperty, sortBy, propertyById]);
+
+  const statusBadgeClass = (status: string) =>
+    status === "Active"
+      ? "bg-green-200 text-green-900"
+      : "bg-gray-200 text-gray-900";
+  const statusIcon = (status: string) => (status === "Active" ? CheckCircle : XCircle);
+  const paymentBadgeClass = (ps: string) =>
+    ps === "Paid"
+      ? "bg-green-200 text-green-900"
+      : ps === "Overdue"
+      ? "bg-red-200 text-red-900"
+      : "bg-yellow-200 text-yellow-900";
+  const paymentIcon = (ps: string) => (ps === "Paid" ? CheckCircle : ps === "Overdue" ? AlertTriangle : Clock);
 
   const exportCSV = () => {
     const rows = [
@@ -200,14 +215,24 @@ export default function TenantsPage() {
               <SelectItem value="payment">Payment Status</SelectItem>
             </SelectContent>
           </Select>
+          <Button variant={compact ? "secondary" : "outline"} onClick={() => setCompact((v) => !v)}>
+            <List className="h-4 w-4 mr-2" /> {compact ? "Compact On" : "Compact Off"}
+          </Button>
           <Button variant="outline" onClick={() => setShowArchived((s) => !s)}>
             {showArchived ? "Hide Archived" : "Show Archived"}
           </Button>
-          <Button variant="outline" onClick={exportCSV}>Export CSV</Button>
-          <Button variant="outline" onClick={exportPDF}>Export PDF</Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline"><FileDown className="h-4 w-4 mr-2" /> Export</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onClick={exportCSV}><FileSpreadsheet className="h-4 w-4 mr-2" /> CSV</DropdownMenuItem>
+              <DropdownMenuItem onClick={exportPDF}><FileText className="h-4 w-4 mr-2" /> PDF</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
             <DialogTrigger asChild>
-              <Button className="bg-green-600 hover:bg-green-700">Add Tenant</Button>
+              <Button className="bg-green-600 hover:bg-green-700"><Plus className="h-4 w-4 mr-2" /> Add Tenant</Button>
             </DialogTrigger>
             <TenantDialog
               key={editing?.id ?? "new"}
@@ -227,17 +252,17 @@ export default function TenantsPage() {
 
         {!isLoading && !isError && (
           <div className="overflow-x-auto">
-            <Table className="w-full text-sm">
+            <Table className="w-full text-sm min-w-[900px]">
               <TableHeader className="sticky top-0 z-10 bg-white shadow-sm">
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Unit</TableHead>
+                  <TableHead className={compact ? "hidden lg:table-cell" : ""}>Unit</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead className="text-right">Rent</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Payment</TableHead>
-                  <TableHead>Property</TableHead>
-                  <TableHead>Archived</TableHead>
+                  <TableHead className={compact ? "hidden lg:table-cell" : ""}>Payment</TableHead>
+                  <TableHead className="hidden md:table-cell">Property</TableHead>
+                  <TableHead className="hidden md:table-cell">Archived</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -245,22 +270,33 @@ export default function TenantsPage() {
                 {filtered.map((t) => (
                   <TableRow key={t.id} className="odd:bg-gray-50 hover:bg-gray-100/60">
                     <TableCell className="font-medium">{t.name}</TableCell>
-                    <TableCell>{t.unit}</TableCell>
+                    <TableCell className={compact ? "hidden lg:table-cell" : ""}>{t.unit}</TableCell>
                     <TableCell>
                       {t.phone}
                       <Button variant="link" className="ml-2 p-0" onClick={() => updateMutation.mutate({ id: t.id, values: { phone: prompt("Update phone", t.phone) || t.phone } })}>
                         Edit
                       </Button>
+                      <div className="md:hidden text-xs text-muted-foreground mt-1">
+                        Property: {properties.find((p) => p.id === t.propertyId)?.name ?? t.propertyId} • Archived: {t.archived ? "Yes" : "No"}
+                      </div>
                     </TableCell>
                     <TableCell className="text-green-700 text-right tabular-nums whitespace-nowrap">KES {t.rentAmount.toLocaleString()}</TableCell>
                     <TableCell>
-                      <Badge className={`${t.status === "Active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"} uppercase tracking-wide px-2 py-0.5`}>{t.status}</Badge>
+                      {(() => { const Icon = statusIcon(t.status); return (
+                        <Badge className={`${statusBadgeClass(t.status)} uppercase tracking-wide px-2 py-0.5 flex items-center`}>
+                          <Icon className="h-3 w-3 mr-1" /> {t.status}
+                        </Badge>
+                      ); })()}
                     </TableCell>
-                    <TableCell>
-                      <Badge className={`${t.paymentStatus === "Paid" ? "bg-green-100 text-green-800" : t.paymentStatus === "Overdue" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"} uppercase tracking-wide px-2 py-0.5`}>{t.paymentStatus}</Badge>
+                    <TableCell className={compact ? "hidden lg:table-cell" : ""}>
+                      {(() => { const Icon = paymentIcon(t.paymentStatus); return (
+                        <Badge className={`${paymentBadgeClass(t.paymentStatus)} uppercase tracking-wide px-2 py-0.5 flex items-center`}>
+                          <Icon className="h-3 w-3 mr-1" /> {t.paymentStatus}
+                        </Badge>
+                      ); })()}
                     </TableCell>
-                    <TableCell>{properties.find((p) => p.id === t.propertyId)?.name ?? t.propertyId}</TableCell>
-                    <TableCell>{t.archived ? <Badge className="bg-gray-200 text-gray-800">Yes</Badge> : <Badge variant="secondary">No</Badge>}</TableCell>
+                    <TableCell className="hidden md:table-cell">{properties.find((p) => p.id === t.propertyId)?.name ?? t.propertyId}</TableCell>
+                    <TableCell className="hidden md:table-cell">{t.archived ? <Badge className="bg-gray-200 text-gray-800">Yes</Badge> : <Badge variant="secondary">No</Badge>}</TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -269,15 +305,18 @@ export default function TenantsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-44">
-                          <DropdownMenuItem onClick={() => { setEditing(t); setOpen(true); }}>Edit</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setConfirmArchive({ id: t.id, archived: !t.archived })}>{t.archived ? "Unarchive" : "Archive"}</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => { setEditing(t); setOpen(true); }} title="Edit tenant"><Pencil className="h-4 w-4 mr-2" /> Edit</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setConfirmArchive({ id: t.id, archived: !t.archived })} title="Archive or unarchive"><ArchiveIcon className="h-4 w-4 mr-2" /> {t.archived ? "Unarchive" : "Archive"}</DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem asChild>
-                            <Link to="/leases">View lease</Link>
+                          <DropdownMenuItem asChild title="Open tenant leases">
+                            <Link to="/leases" className="flex items-center">
+                              <FileText className="h-4 w-4 mr-2" />
+                              <span>View lease</span>
+                            </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => toast({ title: "Reminder sent", description: `Reminder sent to ${t.name}` })}>Send reminder</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => toast({ title: "Reminder sent", description: `Reminder sent to ${t.name}` })} title="Send payment reminder"><Bell className="h-4 w-4 mr-2" /> Send reminder</DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600" onClick={() => setConfirmDeleteId(t.id)}>Delete</DropdownMenuItem>
+                          <DropdownMenuItem className="text-red-600" onClick={() => setConfirmDeleteId(t.id)} title="Delete tenant"><Trash2 className="h-4 w-4 mr-2" /> Delete</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

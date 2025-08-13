@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -18,9 +18,10 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/use-toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { generatePaymentReceiptPDF } from "@/utils/pdf";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, FileDown, FileSpreadsheet, FileText, Plus, List, Pencil, Archive as ArchiveIcon, FileText as FileTextIcon, Mail, CheckCircle, ChevronDown, ChevronUp, CreditCard } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Switch } from "@/components/ui/switch";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const paymentSchema = z.object({
   tenantId: z.coerce.number().int().positive(),
@@ -62,19 +63,24 @@ export default function PaymentsPage() {
   const [selected, setSelected] = useState<Set<ID>>(new Set());
   const [confirmPaymentId, setConfirmPaymentId] = useState<ID | null>(null);
   const [confirmArchive, setConfirmArchive] = useState<{ id: ID; archived: boolean } | null>(null);
-  const [dense, setDense] = useState(false);
+  const [compact, setCompact] = useState(false);
+  const [expanded, setExpanded] = useState<Set<ID>>(new Set());
 
   const tById = useMemo(() => new Map(tenants.map((t) => [t.id, t])), [tenants]);
   const lById = useMemo(() => new Map(leases.map((l) => [l.id, l])), [leases]);
   const pById = useMemo(() => new Map(properties.map((p) => [p.id, p])), [properties]);
 
+  const isArchived = (p: Payment) => Boolean((p as unknown as { archived?: boolean }).archived);
+
   const filtered = useMemo(() => {
-    let list = payments.filter((p) => (showArchived ? true : !(p as unknown as { archived?: boolean }).archived));
+    let list = payments.filter((p) => (showArchived ? true : !isArchived(p)));
     if (search) {
       const s = search.toLowerCase();
-      list = list.filter((p) => [tById.get(p.tenantId)?.name, pById.get(lById.get(p.leaseId)?.propertyId ?? -1)?.name, p.reference]
-        .filter(Boolean).some((v) => String(v).toLowerCase().includes(s))
-      );
+      list = list.filter((p) => [
+        tById.get(p.tenantId)?.name,
+        pById.get(lById.get(p.leaseId)?.propertyId ?? -1)?.name,
+        p.reference,
+      ].filter(Boolean).some((v) => String(v).toLowerCase().includes(s)));
     }
     if (filterTenant) list = list.filter((p) => p.tenantId === filterTenant);
     if (filterLease) list = list.filter((p) => p.leaseId === filterLease);
@@ -96,7 +102,6 @@ export default function PaymentsPage() {
       qc.invalidateQueries({ queryKey: queryKeys.resource("payments") });
       toast({ title: "Payment created" });
       setOpen(false);
-      // Auto-generate a receipt PDF and force download
       const blob = await generatePaymentReceiptPDF(payment as Payment, tById.get(payment.tenantId), lById.get(payment.leaseId), pById.get(lById.get(payment.leaseId)?.propertyId ?? -1));
       const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `receipt-${payment.id}.pdf`; a.click(); URL.revokeObjectURL(url);
     },
@@ -122,6 +127,7 @@ export default function PaymentsPage() {
     await Promise.all([...selected].map((id) => updatePayment.mutateAsync({ id, values: { status: "Completed" } })));
     setSelected(new Set());
   };
+
   const exportCSV = () => {
     const rows = [["Tenant","Property","Lease","Amount","Method","Date","Status","Reference"], ...filtered.map((p) => [
       tById.get(p.tenantId)?.name ?? p.tenantId,
@@ -137,6 +143,7 @@ export default function PaymentsPage() {
     const csv = rows.map((r) => r.map((v) => `"${escape(v)}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `payments-${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
   };
+
   const exportPDF = async () => {
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -171,7 +178,14 @@ export default function PaymentsPage() {
   const methodBadge = (method: Payment["method"]) =>
     method === "M-Pesa" ? "bg-green-100 text-green-800" : method === "Bank Transfer" ? "bg-blue-100 text-blue-800" : method === "Card" ? "bg-purple-100 text-purple-800" : "bg-gray-100 text-gray-800";
   const formatAmount = (n: number) => `KES ${n.toLocaleString()}`;
+  const formatShortDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
   const formatDateTime = (iso: string) => new Date(iso).toLocaleString();
+
+  const toggleExpanded = (id: ID) => {
+    const next = new Set(expanded);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setExpanded(next);
+  };
 
   return (
     <Card>
@@ -181,51 +195,68 @@ export default function PaymentsPage() {
           <p className="text-sm text-muted-foreground">{filtered.length} result{filtered.length === 1 ? "" : "s"}</p>
         </div>
         <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
-          <Input placeholder="Search payments..." value={search} onChange={(e) => setSearch(e.target.value)} />
-          <Select value={filterTenant ? String(filterTenant) : undefined} onValueChange={(v) => setFilterTenant(Number(v))}>
-            <SelectTrigger className="min-w-[160px]"><SelectValue placeholder="Tenant" /></SelectTrigger>
-            <SelectContent>{tenants.map((t) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
-          </Select>
-          <Select value={filterLease ? String(filterLease) : undefined} onValueChange={(v) => setFilterLease(Number(v))}>
-            <SelectTrigger className="min-w-[160px]"><SelectValue placeholder="Lease" /></SelectTrigger>
-            <SelectContent>{leases.map((l) => <SelectItem key={l.id} value={String(l.id)}>#{l.id}</SelectItem>)}</SelectContent>
-          </Select>
-          <Select value={filterMethod} onValueChange={(v) => setFilterMethod(v)}>
-            <SelectTrigger className="min-w-[160px]"><SelectValue placeholder="Method" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="M-Pesa">M-Pesa</SelectItem>
-              <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-              <SelectItem value="Cash">Cash</SelectItem>
-              <SelectItem value="Card">Card</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v)}>
-            <SelectTrigger className="min-w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Completed">Completed</SelectItem>
-              <SelectItem value="Pending">Pending</SelectItem>
-              <SelectItem value="Overdue">Overdue</SelectItem>
-            </SelectContent>
-          </Select>
-          <Input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} />
-          <Input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} />
-          <Select value={sortBy} onValueChange={(v) => setSortBy(v)}>
-            <SelectTrigger className="min-w-[160px]"><SelectValue placeholder="Sort by" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="date">Date</SelectItem>
-              <SelectItem value="amount">Amount</SelectItem>
-              <SelectItem value="status">Status</SelectItem>
-            </SelectContent>
-          </Select>
+          <Collapsible defaultOpen className="w-full">
+            <div className="flex items-center gap-2">
+              <Input placeholder="Search payments..." value={search} onChange={(e) => setSearch(e.target.value)} className="flex-1 min-w-[180px]" />
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" className="md:hidden">Filters</Button>
+              </CollapsibleTrigger>
+            </div>
+            <CollapsibleContent className="mt-2 md:mt-0 md:block data-[state=closed]:hidden">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:flex md:flex-row gap-2">
+                <Select value={filterTenant ? String(filterTenant) : undefined} onValueChange={(v) => setFilterTenant(Number(v))}>
+                  <SelectTrigger className="min-w-[160px]"><SelectValue placeholder="Tenant" /></SelectTrigger>
+                  <SelectContent>{tenants.map((t) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={filterLease ? String(filterLease) : undefined} onValueChange={(v) => setFilterLease(Number(v))}>
+                  <SelectTrigger className="min-w-[160px]"><SelectValue placeholder="Lease" /></SelectTrigger>
+                  <SelectContent>{leases.map((l) => <SelectItem key={l.id} value={String(l.id)}>#{l.id}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={filterMethod} onValueChange={(v) => setFilterMethod(v)}>
+                  <SelectTrigger className="min-w-[160px]"><SelectValue placeholder="Method" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="M-Pesa">M-Pesa</SelectItem>
+                    <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                    <SelectItem value="Cash">Cash</SelectItem>
+                    <SelectItem value="Card">Card</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v)}>
+                  <SelectTrigger className="min-w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Completed">Completed</SelectItem>
+                    <SelectItem value="Pending">Pending</SelectItem>
+                    <SelectItem value="Overdue">Overdue</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} />
+                <Input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} />
+                <Select value={sortBy} onValueChange={(v) => setSortBy(v)}>
+                  <SelectTrigger className="min-w-[160px]"><SelectValue placeholder="Sort by" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="date">Date</SelectItem>
+                    <SelectItem value="amount">Amount</SelectItem>
+                    <SelectItem value="status">Status</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+          <Button variant={compact ? "secondary" : "outline"} onClick={() => setCompact((v) => !v)}>
+            <List className="h-4 w-4 mr-2" /> {compact ? "Compact On" : "Compact Off"}
+          </Button>
           <Button variant="outline" onClick={() => setShowArchived((s) => !s)}>{showArchived ? "Hide Archived" : "Show Archived"}</Button>
-          <div className="flex items-center gap-2 px-2">
-            <Label htmlFor="density" className="text-xs text-muted-foreground">Compact</Label>
-            <Switch id="density" checked={dense} onCheckedChange={(v) => setDense(!!v)} aria-label="Toggle compact density" />
-          </div>
-          <Button variant="outline" onClick={exportCSV}>Export CSV</Button>
-          <Button variant="outline" onClick={exportPDF}>Export PDF</Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline"><FileDown className="h-4 w-4 mr-2" /> Export</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onClick={exportCSV}><FileSpreadsheet className="h-4 w-4 mr-2" /> CSV</DropdownMenuItem>
+              <DropdownMenuItem onClick={exportPDF}><FileText className="h-4 w-4 mr-2" /> PDF</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setEditing(null); }}>
-            <DialogTrigger asChild><Button className="bg-green-600 hover:bg-green-700">Add Payment</Button></DialogTrigger>
+            <DialogTrigger asChild><Button className="bg-green-600 hover:bg-green-700"><Plus className="h-4 w-4 mr-2" /> Add Payment</Button></DialogTrigger>
             <PaymentDialog key={editing?.id ?? "new"} editing={editing} tenants={tenants} leases={leases} onSubmit={(values) => { if (editing) updatePayment.mutate({ id: editing.id, values }); else createPayment.mutate(values); }} />
           </Dialog>
         </div>
@@ -240,65 +271,90 @@ export default function PaymentsPage() {
               <Button variant="outline" onClick={() => setConfirmPaymentId(-1 as ID)} disabled={selected.size === 0}>Bulk Delete</Button>
               <Button variant="outline" onClick={bulkMarkPaid} disabled={selected.size === 0}>Mark Paid</Button>
             </div>
-            <Table className="w-full text-sm">
+            <Table className="w-full text-sm table-fixed">
               <TableHeader className="sticky top-0 z-10 bg-white shadow-sm">
                 <TableRow>
-                  <TableHead className="w-[44px]"><input type="checkbox" onChange={(e) => {
+                  <TableHead className="w-[44px] px-4 py-2"><input type="checkbox" onChange={(e) => {
                     if (e.target.checked) setSelected(new Set(filtered.map((p) => p.id)));
                     else setSelected(new Set());
                   }} /></TableHead>
-                  <TableHead>Tenant</TableHead>
-                  <TableHead>Property</TableHead>
-                  <TableHead>Lease</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Method</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Reference</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="sticky left-0 z-20 bg-white px-4 py-2">Tenant</TableHead>
+                  <TableHead className="text-right px-4 py-2 w-[120px]">Amount</TableHead>
+                  <TableHead className="px-4 py-2 w-[110px]">Status</TableHead>
+                  <TableHead className="px-4 py-2 w-[110px]">Date</TableHead>
+                  <TableHead className="px-4 py-2 truncate max-w-[180px] md:max-w-[260px]">Lease / Ref</TableHead>
+                  {!compact && (
+                    <TableHead className="text-center px-4 py-2 w-[80px]">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="inline-flex items-center justify-center w-full">
+                            <CreditCard className="h-4 w-4" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>Method</TooltipContent>
+                      </Tooltip>
+                    </TableHead>
+                  )}
+                  <TableHead className="text-right px-4 py-2 w-[72px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((p) => (
-                  <TableRow key={p.id} className={`odd:bg-gray-50 hover:bg-gray-100/60 ${dense ? "h-10" : ""}`}>
-                    <TableCell className="align-middle"><input type="checkbox" checked={selected.has(p.id)} onChange={(e) => {
-                      const copy = new Set(selected); if (e.target.checked) copy.add(p.id); else copy.delete(p.id); setSelected(copy);
-                    }} /></TableCell>
-                    <TableCell className="font-medium">{tById.get(p.tenantId)?.name ?? p.tenantId}</TableCell>
-                    <TableCell>{pById.get(lById.get(p.leaseId)?.propertyId ?? -1)?.name ?? "-"}</TableCell>
-                    <TableCell>#{p.leaseId}</TableCell>
-                    <TableCell className="text-green-700 text-right tabular-nums whitespace-nowrap">{formatAmount(p.amount)}</TableCell>
-                    <TableCell>
-                      <Badge className={`${methodBadge(p.method)} uppercase tracking-wide px-2 py-0.5`}>{p.method}</Badge>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">{formatDateTime(p.date)}</TableCell>
-                    <TableCell><Badge className={`${badge(p.status)} uppercase tracking-wide px-2 py-0.5`}>{p.status}</Badge></TableCell>
-                    <TableCell className="max-w-[180px] truncate">{p.reference}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="icon" aria-label="Actions">
-                            <MoreHorizontal className="h-4 w-4" />
+                  <>
+                    <TableRow key={p.id} className="odd:bg-gray-50 hover:bg-gray-100/60">
+                      <TableCell className="align-middle px-4 py-2">
+                        <div className="flex items-center gap-2">
+                          <input type="checkbox" checked={selected.has(p.id)} onChange={(e) => {
+                            const copy = new Set(selected); if (e.target.checked) copy.add(p.id); else copy.delete(p.id); setSelected(copy);
+                          }} />
+                          <Button variant="ghost" size="icon" aria-label="More details" onClick={() => toggleExpanded(p.id)}>
+                            {expanded.has(p.id) ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44">
-                          <DropdownMenuItem onClick={() => { setEditing(p); setOpen(true); }}>Edit</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setConfirmArchive({ id: p.id, archived: !(p as unknown as { archived?: boolean }).archived })}>
-                            {(p as unknown as { archived?: boolean }).archived ? "Unarchive" : "Archive"}
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={async () => {
-                            const blob = await generatePaymentReceiptPDF(p, tById.get(p.tenantId), lById.get(p.leaseId), pById.get(lById.get(p.leaseId)?.propertyId ?? -1));
-                            const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `receipt-${p.id}.pdf`; a.click(); URL.revokeObjectURL(url);
-                          }}>View receipt</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => toast({ title: "Receipt resent", description: p.reference })}>Resend receipt</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => updatePayment.mutate({ id: p.id, values: { status: "Completed" } })}>Mark as paid</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600" onClick={() => setConfirmPaymentId(p.id)}>Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium sticky left-0 z-10 bg-white/80 backdrop-blur-sm px-4 py-2 truncate max-w-[160px] md:max-w-[220px]" title={tById.get(p.tenantId)?.name ?? String(p.tenantId)}>{tById.get(p.tenantId)?.name ?? p.tenantId}</TableCell>
+                      <TableCell className="text-green-700 text-right tabular-nums whitespace-nowrap px-4 py-2">{formatAmount(p.amount)}</TableCell>
+                      <TableCell className="px-4 py-2 whitespace-nowrap"><Badge className={`${badge(p.status)} uppercase tracking-wide px-2 py-0.5`}>{p.status}</Badge></TableCell>
+                      <TableCell className="px-4 py-2 whitespace-nowrap w-[110px]" title={formatDateTime(p.date)}>{formatShortDate(p.date)}</TableCell>
+                      <TableCell className="px-4 py-2 truncate max-w-[180px] md:max-w-[260px]" title={`#${p.leaseId} • ${p.reference}`}>#{p.leaseId} • {p.reference}</TableCell>
+                      {!compact && (
+                        <TableCell className="px-4 py-2"><Badge className={`${methodBadge(p.method)} uppercase tracking-wide px-2 py-0.5`}>{p.method}</Badge></TableCell>
+                      )}
+                      <TableCell className="text-right px-4 py-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="icon" aria-label="Actions">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            <DropdownMenuItem onClick={() => { setEditing(p); setOpen(true); }}><Pencil className="h-4 w-4 mr-2" /> Edit</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setConfirmArchive({ id: p.id, archived: !isArchived(p) })}><ArchiveIcon className="h-4 w-4 mr-2" /> {isArchived(p) ? "Unarchive" : "Archive"}</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={async () => {
+                              const blob = await generatePaymentReceiptPDF(p, tById.get(p.tenantId), lById.get(p.leaseId), pById.get(lById.get(p.leaseId)?.propertyId ?? -1));
+                              const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `receipt-${p.id}.pdf`; a.click(); URL.revokeObjectURL(url);
+                            }}><FileTextIcon className="h-4 w-4 mr-2" /> View receipt</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => toast({ title: "Receipt resent", description: p.reference })}><Mail className="h-4 w-4 mr-2" /> Resend receipt</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => updatePayment.mutate({ id: p.id, values: { status: "Completed" } })}><CheckCircle className="h-4 w-4 mr-2" /> Mark as paid</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-red-600" onClick={() => setConfirmPaymentId(p.id)}>Delete</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                    {expanded.has(p.id) && (
+                      <TableRow className="bg-white/70">
+                        <TableCell colSpan={compact ? 7 : 8} className="py-4 px-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-muted-foreground">
+                            <div><span className="font-medium text-foreground">Property:</span> {pById.get(lById.get(p.leaseId)?.propertyId ?? -1)?.name ?? "-"}</div>
+                            <div><span className="font-medium text-foreground">Method:</span> <Badge className={`${methodBadge(p.method)} uppercase tracking-wide px-2 py-0.5 ml-1`}>{p.method}</Badge></div>
+                            <div className="sm:col-span-2 truncate" title={p.reference}><span className="font-medium text-foreground">Reference:</span> {p.reference}</div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </>
                 ))}
                 {filtered.length === 0 && (
                   <TableRow>

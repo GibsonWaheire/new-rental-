@@ -25,20 +25,20 @@ export default function ConfirmDialog({ open, title, message, onConfirm, onCance
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v && !pending) onCancel(); }}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[440px]">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle className="text-base font-semibold tracking-tight">{title}</DialogTitle>
         </DialogHeader>
-        <p className="text-sm text-muted-foreground">{message}</p>
-        <DialogFooter>
+        <div className="space-y-3">
+          <p className="text-sm leading-6 text-muted-foreground">{message}</p>
+        </div>
+        <DialogFooter className="gap-2 sm:gap-3">
           <Button variant="outline" onClick={onCancel} disabled={pending}>Cancel</Button>
           <Button variant="destructive" onClick={handleConfirm} disabled={pending}>
-            {pending ? "Deleting..." : "Delete"}
+            {pending ? "Working..." : "Delete"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-
-
