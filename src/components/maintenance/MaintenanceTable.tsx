@@ -33,10 +33,14 @@ export default function MaintenanceTable({ data, propertyById, tenantById, onEdi
   const [expanded, setExpanded] = useState<Set<ID>>(new Set());
   const toggle = (id: ID) => { 
     const next = new Set(expanded); 
-    next.has(id) ? next.delete(id) : next.add(id); 
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
     setExpanded(next); 
   };
-
+  
   return (
     <div className="w-full overflow-x-hidden">
       <Table className="w-full text-sm table-fixed">
